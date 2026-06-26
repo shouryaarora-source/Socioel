@@ -74,7 +74,7 @@ export function EventMapView({ events, userCoords }: EventMapViewProps) {
       ? [userCoords.lat, userCoords.lng]
       : eventsWithCoords.length > 0
       ? [eventsWithCoords[0].latitude!, eventsWithCoords[0].longitude!]
-      : [40.7128, -74.006];
+      : [20.5937, 78.9629];
 
   const userIcon = L.divIcon({
     html: `<div style="width:16px;height:16px;border-radius:50%;background:#6366f1;border:3px solid white;box-shadow:0 0 0 3px rgba(99,102,241,0.35)"></div>`,
