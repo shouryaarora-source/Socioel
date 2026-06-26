@@ -366,6 +366,29 @@ paths:
         "401":
           description: Not authenticated
 
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register a new user (verifies OTP and creates account)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterInput"
+      responses:
+        "201":
+          description: Registered and logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Validation error or phone already registered
+        "401":
+          description: Invalid or expired OTP code
+
   /auth/logout:
     post:
       operationId: logout
@@ -789,7 +812,11 @@ components:
           type: ["string", "null"]
         interests:
           type: ["string", "null"]
+        email:
+          type: ["string", "null"]
         phone:
+          type: ["string", "null"]
+        gender:
           type: ["string", "null"]
         website:
           type: ["string", "null"]
@@ -832,9 +859,13 @@ components:
           type: string
         age:
           type: integer
+        gender:
+          type: string
         city:
           type: string
         interests:
+          type: string
+        email:
           type: string
         phone:
           type: string
@@ -911,10 +942,11 @@ components:
 
     SendOtpInput:
       type: object
-      required: [phone]
+      required: [identifier]
       properties:
-        phone:
+        identifier:
           type: string
+          description: Phone number or email address
 
     OtpSendResult:
       type: object
@@ -924,6 +956,9 @@ components:
           type: boolean
         message:
           type: string
+        phone:
+          type: ["string", "null"]
+          description: The phone number OTP was sent to (useful when signing in by email)
         devCode:
           type: ["string", "null"]
 
@@ -938,9 +973,32 @@ components:
 
     AuthResponse:
       type: object
-      required: [success, user]
+      required: [success]
       properties:
         success:
           type: boolean
         user:
           $ref: "#/components/schemas/User"
+        isNewUser:
+          type: boolean
+          description: True when phone is verified but no account exists yet
+
+    RegisterInput:
+      type: object
+      required: [name, phone, code]
+      properties:
+        name:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        gender:
+          type: string
+        age:
+          type: integer
+        profession:
+          type: string
+        code:
+          type: string
+          description: OTP code that was sent to the phone

@@ -9,6 +9,11 @@
 export interface OtpSendResult {
   success: boolean;
   message: string;
+  /**
+     * The phone number OTP was sent to (useful when signing in by email)
+     * @nullable
+     */
+  phone?: string | null;
   /** @nullable */
   devCode?: string | null;
 }

@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Navbar } from "@/components/Navbar";
+import { useAuth } from "@/contexts/AuthContext";
 import { useCreateEvent, getListEventsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -29,8 +30,6 @@ import {
 import { Card } from "@/components/ui/card";
 import { Calendar, Clock, MapPin, Users, Type, Image as ImageIcon, Loader2, Lock, Globe } from "lucide-react";
 
-const CURRENT_USER_ID = 1;
-
 const formSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters").max(100),
   description: z.string().min(1, "Description is required").max(1000),
@@ -47,15 +46,7 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-const CATEGORIES = [
-  "Running",
-  "Hiking",
-  "Cycling",
-  "Sports",
-  "Yoga",
-  "Fitness",
-  "Social",
-];
+const CATEGORIES = ["Running", "Hiking", "Cycling", "Sports", "Yoga", "Fitness", "Social"];
 
 interface NominatimResult {
   place_id: number;
@@ -92,15 +83,8 @@ function LocationAutocomplete({
   function handleInput(val: string) {
     onChange(val);
     onCoords(undefined, undefined);
-
     if (debounceRef.current) clearTimeout(debounceRef.current);
-
-    if (val.trim().length < 3) {
-      setSuggestions([]);
-      setOpen(false);
-      return;
-    }
-
+    if (val.trim().length < 3) { setSuggestions([]); setOpen(false); return; }
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
       try {
@@ -110,8 +94,7 @@ function LocationAutocomplete({
         setSuggestions(data);
         setOpen(data.length > 0);
       } catch {
-        setSuggestions([]);
-        setOpen(false);
+        setSuggestions([]); setOpen(false);
       } finally {
         setLoading(false);
       }
@@ -128,9 +111,7 @@ function LocationAutocomplete({
   return (
     <div className="relative" ref={containerRef}>
       <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10" />
-      {loading && (
-        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground animate-spin z-10" />
-      )}
+      {loading && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground animate-spin z-10" />}
       <Input
         placeholder="Start typing an address or place name…"
         className="h-12 rounded-xl pl-10"
@@ -163,6 +144,15 @@ export default function CreateEvent() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user: currentUser, isLoading: authLoading } = useAuth();
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !currentUser) {
+      toast({ title: "Sign in required", description: "Please sign in to create an event.", variant: "destructive" });
+      setLocation("/login");
+    }
+  }, [authLoading, currentUser, setLocation, toast]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -187,26 +177,20 @@ export default function CreateEvent() {
     mutation: {
       onSuccess: (data) => {
         queryClient.invalidateQueries({ queryKey: getListEventsQueryKey() });
-        toast({
-          title: "Event created!",
-          description: "Your community event is now live.",
-        });
+        toast({ title: "Event created!", description: "Your community event is now live." });
         setLocation(`/events/${data.id}`);
       },
       onError: () => {
-        toast({
-          title: "Uh oh",
-          description: "Something went wrong. Please try again.",
-          variant: "destructive",
-        });
+        toast({ title: "Uh oh", description: "Something went wrong. Please try again.", variant: "destructive" });
       },
     },
   });
 
   function onSubmit(values: FormValues) {
+    if (!currentUser) return;
     const payload: Parameters<typeof createEvent.mutate>[0]["data"] = {
       ...values,
-      hostId: CURRENT_USER_ID,
+      hostId: currentUser.id,
     };
     if (values.latitude != null && values.longitude != null) {
       payload.latitude = values.latitude;
@@ -215,18 +199,26 @@ export default function CreateEvent() {
     createEvent.mutate({ data: payload });
   }
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentUser) return null;
+
   return (
     <div className="min-h-screen pb-20 md:pb-0 bg-background/50">
       <Navbar />
-
       <main className="container mx-auto px-4 py-12 max-w-2xl">
         <div className="text-center mb-10">
-          <h1 className="text-4xl font-display font-extrabold text-foreground tracking-tight mb-3">
-            Host an Event
-          </h1>
-          <p className="text-lg text-muted-foreground">
-            Bring people together. Create your community gathering.
-          </p>
+          <h1 className="text-4xl font-display font-extrabold text-foreground tracking-tight mb-3">Host an Event</h1>
+          <p className="text-lg text-muted-foreground">Bring people together. Create your community gathering.</p>
         </div>
 
         <Card className="p-6 md:p-8 rounded-3xl border shadow-sm bg-card">
@@ -241,60 +233,42 @@ export default function CreateEvent() {
                   <h2 className="text-lg font-display font-bold">The Basics</h2>
                 </div>
 
-                <FormField
-                  control={form.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Event Title</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g. Morning 5k Run at Golden Gate Park" className="h-12 rounded-xl" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <FormField control={form.control} name="title" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Event Title</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. Morning 5k Run at Golden Gate Park" className="h-12 rounded-xl" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
 
-                <FormField
-                  control={form.control}
-                  name="category"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Category</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="h-12 rounded-xl">
-                            <SelectValue placeholder="Select a category" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {CATEGORIES.map((cat) => (
-                            <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Description</FormLabel>
+                <FormField control={form.control} name="category" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Category</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <Textarea
-                          placeholder="What will you be doing? What should people bring?"
-                          className="min-h-[120px] rounded-xl resize-y"
-                          {...field}
-                        />
+                        <SelectTrigger className="h-12 rounded-xl">
+                          <SelectValue placeholder="Select a category" />
+                        </SelectTrigger>
                       </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                      <SelectContent>
+                        {CATEGORIES.map((cat) => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+
+                <FormField control={form.control} name="description" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="What will you be doing? What should people bring?" className="min-h-[120px] rounded-xl resize-y" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
               </div>
 
               <div className="space-y-6 pt-4">
@@ -305,64 +279,46 @@ export default function CreateEvent() {
                   <h2 className="text-lg font-display font-bold">When & Where</h2>
                 </div>
 
-                <FormField
-                  control={form.control}
-                  name="location"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Location</FormLabel>
-                      <FormControl>
-                        <LocationAutocomplete
-                          value={field.value}
-                          onChange={field.onChange}
-                          onCoords={(lat, lng) => {
-                            form.setValue("latitude", lat);
-                            form.setValue("longitude", lng);
-                          }}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Select a suggestion to pin the exact coordinates for "Near Me" search.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <FormField control={form.control} name="location" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Location</FormLabel>
+                    <FormControl>
+                      <LocationAutocomplete
+                        value={field.value}
+                        onChange={field.onChange}
+                        onCoords={(lat, lng) => { form.setValue("latitude", lat); form.setValue("longitude", lng); }}
+                      />
+                    </FormControl>
+                    <FormDescription>Select a suggestion to pin the exact coordinates for "Near Me" search.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )} />
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FormField
-                    control={form.control}
-                    name="date"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Date</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                            <Input type="date" className="h-12 rounded-xl pl-10" {...field} />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="time"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Time</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                            <Input type="time" className="h-12 rounded-xl pl-10" {...field} />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <FormField control={form.control} name="date" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Date</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <Input type="date" className="h-12 rounded-xl pl-10" {...field} />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="time" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Time</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <Input type="time" className="h-12 rounded-xl pl-10" {...field} />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
                 </div>
               </div>
 
@@ -375,99 +331,75 @@ export default function CreateEvent() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FormField
-                    control={form.control}
-                    name="maxAttendees"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Max Attendees</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                            <Input type="number" min="2" max="1000" className="h-12 rounded-xl pl-10" {...field} />
-                          </div>
-                        </FormControl>
-                        <FormDescription>Limit the group size if needed</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="imageUrl"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Cover Image URL (Optional)</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                            <Input placeholder="https://..." className="h-12 rounded-xl pl-10" {...field} />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                {/* Join Mode Toggle */}
-                <FormField
-                  control={form.control}
-                  name="joinMode"
-                  render={({ field }) => (
+                  <FormField control={form.control} name="maxAttendees" render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Who can join?</FormLabel>
-                      <div className="flex gap-3 mt-1">
-                        <button
-                          type="button"
-                          onClick={() => field.onChange("open")}
-                          className={`flex-1 flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition-all ${
-                            joinMode === "open"
-                              ? "border-primary bg-primary/5"
-                              : "border-border hover:border-muted-foreground/30"
-                          }`}
-                        >
-                          <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${joinMode === "open" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-                            <Globe className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <p className="font-semibold text-sm">Open to all</p>
-                            <p className="text-xs text-muted-foreground">Anyone can join instantly</p>
-                          </div>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => field.onChange("approval_required")}
-                          className={`flex-1 flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition-all ${
-                            joinMode === "approval_required"
-                              ? "border-primary bg-primary/5"
-                              : "border-border hover:border-muted-foreground/30"
-                          }`}
-                        >
-                          <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${joinMode === "approval_required" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-                            <Lock className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <p className="font-semibold text-sm">Approval required</p>
-                            <p className="text-xs text-muted-foreground">You approve each request</p>
-                          </div>
-                        </button>
-                      </div>
+                      <FormLabel>Max Attendees</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <Input type="number" min="2" max="1000" className="h-12 rounded-xl pl-10" {...field} />
+                        </div>
+                      </FormControl>
+                      <FormDescription>Limit the group size if needed</FormDescription>
                       <FormMessage />
                     </FormItem>
-                  )}
-                />
+                  )} />
+                  <FormField control={form.control} name="imageUrl" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Cover Image URL (Optional)</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <Input placeholder="https://..." className="h-12 rounded-xl pl-10" {...field} />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                </div>
+
+                <FormField control={form.control} name="joinMode" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Who can join?</FormLabel>
+                    <div className="flex gap-3 mt-1">
+                      <button
+                        type="button"
+                        onClick={() => field.onChange("open")}
+                        className={`flex-1 flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition-all ${
+                          joinMode === "open" ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30"
+                        }`}
+                      >
+                        <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${joinMode === "open" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                          <Globe className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-sm">Open to all</p>
+                          <p className="text-xs text-muted-foreground">Anyone can join instantly</p>
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => field.onChange("approval_required")}
+                        className={`flex-1 flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition-all ${
+                          joinMode === "approval_required" ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/30"
+                        }`}
+                      >
+                        <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${joinMode === "approval_required" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                          <Lock className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-sm">Approval required</p>
+                          <p className="text-xs text-muted-foreground">You approve each request</p>
+                        </div>
+                      </button>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )} />
               </div>
 
               <div className="pt-6 border-t">
-                <Button
-                  type="submit"
-                  size="lg"
-                  className="w-full h-14 rounded-xl text-lg font-medium hover-elevate shadow-md"
-                  disabled={createEvent.isPending}
-                >
+                <Button type="submit" size="lg" className="w-full h-14 rounded-xl text-lg font-medium hover-elevate shadow-md" disabled={createEvent.isPending}>
                   {createEvent.isPending ? "Creating..." : "Create Event"}
                 </Button>
               </div>

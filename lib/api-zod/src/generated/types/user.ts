@@ -22,7 +22,11 @@ export interface User {
   /** @nullable */
   interests?: string | null;
   /** @nullable */
+  email?: string | null;
+  /** @nullable */
   phone?: string | null;
+  /** @nullable */
+  gender?: string | null;
   /** @nullable */
   website?: string | null;
   /** @nullable */

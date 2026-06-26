@@ -149,7 +149,11 @@ export interface User {
   /** @nullable */
   interests?: string | null;
   /** @nullable */
+  email?: string | null;
+  /** @nullable */
   phone?: string | null;
+  /** @nullable */
+  gender?: string | null;
   /** @nullable */
   website?: string | null;
   /** @nullable */
@@ -178,8 +182,10 @@ export interface UserUpdate {
   avatarUrl?: string;
   profession?: string;
   age?: number;
+  gender?: string;
   city?: string;
   interests?: string;
+  email?: string;
   phone?: string;
   website?: string;
   instagram?: string;
@@ -225,12 +231,18 @@ export interface CommentInput {
 }
 
 export interface SendOtpInput {
-  phone: string;
+  /** Phone number or email address */
+  identifier: string;
 }
 
 export interface OtpSendResult {
   success: boolean;
   message: string;
+  /**
+     * The phone number OTP was sent to (useful when signing in by email)
+     * @nullable
+     */
+  phone?: string | null;
   /** @nullable */
   devCode?: string | null;
 }
@@ -242,7 +254,20 @@ export interface VerifyOtpInput {
 
 export interface AuthResponse {
   success: boolean;
-  user: User;
+  user?: User;
+  /** True when phone is verified but no account exists yet */
+  isNewUser?: boolean;
+}
+
+export interface RegisterInput {
+  name: string;
+  phone: string;
+  email?: string;
+  gender?: string;
+  age?: number;
+  profession?: string;
+  /** OTP code that was sent to the phone */
+  code: string;
 }
 
 export type ListEventsParams = {

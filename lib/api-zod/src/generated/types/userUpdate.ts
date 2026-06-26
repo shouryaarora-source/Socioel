@@ -12,8 +12,10 @@ export interface UserUpdate {
   avatarUrl?: string;
   profession?: string;
   age?: number;
+  gender?: string;
   city?: string;
   interests?: string;
+  email?: string;
   phone?: string;
   website?: string;
   instagram?: string;

@@ -259,7 +259,9 @@ export const GetEventAttendeesResponseItem = zod.object({
   "age": zod.number().nullish(),
   "city": zod.string().nullish(),
   "interests": zod.string().nullish(),
+  "email": zod.string().nullish(),
   "phone": zod.string().nullish(),
+  "gender": zod.string().nullish(),
   "website": zod.string().nullish(),
   "instagram": zod.string().nullish(),
   "verified": zod.boolean(),
@@ -330,12 +332,13 @@ export const RejectJoinRequestResponse = zod.object({
  * @summary Send OTP to phone number
  */
 export const SendOtpBody = zod.object({
-  "phone": zod.string()
+  "identifier": zod.string().describe('Phone number or email address')
 })
 
 export const SendOtpResponse = zod.object({
   "success": zod.boolean(),
   "message": zod.string(),
+  "phone": zod.string().nullish().describe('The phone number OTP was sent to (useful when signing in by email)'),
   "devCode": zod.string().nullish()
 })
 
@@ -359,7 +362,9 @@ export const VerifyOtpResponse = zod.object({
   "age": zod.number().nullish(),
   "city": zod.string().nullish(),
   "interests": zod.string().nullish(),
+  "email": zod.string().nullish(),
   "phone": zod.string().nullish(),
+  "gender": zod.string().nullish(),
   "website": zod.string().nullish(),
   "instagram": zod.string().nullish(),
   "verified": zod.boolean(),
@@ -368,7 +373,8 @@ export const VerifyOtpResponse = zod.object({
   "eventsHosted": zod.number().nullish(),
   "eventsJoined": zod.number().nullish(),
   "createdAt": zod.string()
-})
+}).optional(),
+  "isNewUser": zod.boolean().optional().describe('True when phone is verified but no account exists yet')
 })
 
 
@@ -384,7 +390,9 @@ export const GetMeResponse = zod.object({
   "age": zod.number().nullish(),
   "city": zod.string().nullish(),
   "interests": zod.string().nullish(),
+  "email": zod.string().nullish(),
   "phone": zod.string().nullish(),
+  "gender": zod.string().nullish(),
   "website": zod.string().nullish(),
   "instagram": zod.string().nullish(),
   "verified": zod.boolean(),
@@ -393,6 +401,46 @@ export const GetMeResponse = zod.object({
   "eventsHosted": zod.number().nullish(),
   "eventsJoined": zod.number().nullish(),
   "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Register a new user (verifies OTP and creates account)
+ */
+export const RegisterBody = zod.object({
+  "name": zod.string(),
+  "phone": zod.string(),
+  "email": zod.string().optional(),
+  "gender": zod.string().optional(),
+  "age": zod.number().optional(),
+  "profession": zod.string().optional(),
+  "code": zod.string().describe('OTP code that was sent to the phone')
+})
+
+export const RegisterResponse = zod.object({
+  "success": zod.boolean(),
+  "user": zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "bio": zod.string().nullish(),
+  "avatarUrl": zod.string().nullish(),
+  "profession": zod.string().nullish(),
+  "age": zod.number().nullish(),
+  "city": zod.string().nullish(),
+  "interests": zod.string().nullish(),
+  "email": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "gender": zod.string().nullish(),
+  "website": zod.string().nullish(),
+  "instagram": zod.string().nullish(),
+  "verified": zod.boolean(),
+  "verifiedAt": zod.string().nullish(),
+  "verificationSelfieUrl": zod.string().nullish(),
+  "eventsHosted": zod.number().nullish(),
+  "eventsJoined": zod.number().nullish(),
+  "createdAt": zod.string()
+}).optional(),
+  "isNewUser": zod.boolean().optional().describe('True when phone is verified but no account exists yet')
 })
 
 
@@ -420,7 +468,9 @@ export const CreateUserResponse = zod.object({
   "age": zod.number().nullish(),
   "city": zod.string().nullish(),
   "interests": zod.string().nullish(),
+  "email": zod.string().nullish(),
   "phone": zod.string().nullish(),
+  "gender": zod.string().nullish(),
   "website": zod.string().nullish(),
   "instagram": zod.string().nullish(),
   "verified": zod.boolean(),
@@ -448,7 +498,9 @@ export const GetUserResponse = zod.object({
   "age": zod.number().nullish(),
   "city": zod.string().nullish(),
   "interests": zod.string().nullish(),
+  "email": zod.string().nullish(),
   "phone": zod.string().nullish(),
+  "gender": zod.string().nullish(),
   "website": zod.string().nullish(),
   "instagram": zod.string().nullish(),
   "verified": zod.boolean(),
@@ -473,8 +525,10 @@ export const UpdateUserBody = zod.object({
   "avatarUrl": zod.string().optional(),
   "profession": zod.string().optional(),
   "age": zod.number().optional(),
+  "gender": zod.string().optional(),
   "city": zod.string().optional(),
   "interests": zod.string().optional(),
+  "email": zod.string().optional(),
   "phone": zod.string().optional(),
   "website": zod.string().optional(),
   "instagram": zod.string().optional()
@@ -489,7 +543,9 @@ export const UpdateUserResponse = zod.object({
   "age": zod.number().nullish(),
   "city": zod.string().nullish(),
   "interests": zod.string().nullish(),
+  "email": zod.string().nullish(),
   "phone": zod.string().nullish(),
+  "gender": zod.string().nullish(),
   "website": zod.string().nullish(),
   "instagram": zod.string().nullish(),
   "verified": zod.boolean(),
@@ -521,7 +577,9 @@ export const VerifyUserResponse = zod.object({
   "age": zod.number().nullish(),
   "city": zod.string().nullish(),
   "interests": zod.string().nullish(),
+  "email": zod.string().nullish(),
   "phone": zod.string().nullish(),
+  "gender": zod.string().nullish(),
   "website": zod.string().nullish(),
   "instagram": zod.string().nullish(),
   "verified": zod.boolean(),

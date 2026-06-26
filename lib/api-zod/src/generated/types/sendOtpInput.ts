@@ -7,5 +7,6 @@
  */
 
 export interface SendOtpInput {
-  phone: string;
+  /** Phone number or email address */
+  identifier: string;
 }

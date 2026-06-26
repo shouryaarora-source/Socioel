@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation, useParams } from "wouter";
 import { format, formatDistanceToNow } from "date-fns";
 import { Navbar } from "@/components/Navbar";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   useGetEvent,
   useGetEventAttendees,
@@ -44,8 +45,6 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-const CURRENT_USER_ID = 1;
-
 export default function EventDetail() {
   const params = useParams();
   const id = parseInt(params.id || "0");
@@ -53,6 +52,8 @@ export default function EventDetail() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [commentBody, setCommentBody] = useState("");
+  const { user: currentUser } = useAuth();
+  const currentUserId = currentUser?.id ?? null;
 
   const { data: event, isLoading: loadingEvent } = useGetEvent(id, {
     query: { queryKey: getGetEventQueryKey(id), enabled: !!id },
@@ -172,20 +173,22 @@ export default function EventDetail() {
     );
   }
 
-  const isAttending = attendees?.some((a) => a.id === CURRENT_USER_ID) || false;
-  const isHost = event.hostId === CURRENT_USER_ID;
+  const isAttending = currentUserId ? (attendees?.some((a) => a.id === currentUserId) || false) : false;
+  const isHost = currentUserId ? event.hostId === currentUserId : false;
   const isFull = event.attendeeCount >= event.maxAttendees;
   const isApprovalRequired = event.joinMode === "approval_required";
-
-  // Check if the current user has a pending request
-  const myRequest = joinRequests?.find((r) => r.userId === CURRENT_USER_ID);
+  const myRequest = currentUserId ? joinRequests?.find((r) => r.userId === currentUserId) : null;
   const hasPendingRequest = myRequest?.status === "pending";
 
   const handleJoinLeave = () => {
+    if (!currentUserId) {
+      setLocation("/login");
+      return;
+    }
     if (isAttending || hasPendingRequest) {
-      leaveEvent.mutate({ id, data: { userId: CURRENT_USER_ID } });
+      leaveEvent.mutate({ id, data: { userId: currentUserId } });
     } else {
-      joinEvent.mutate({ id, data: { userId: CURRENT_USER_ID } });
+      joinEvent.mutate({ id, data: { userId: currentUserId } });
     }
   };
 
@@ -196,8 +199,8 @@ export default function EventDetail() {
   };
 
   const handlePostComment = () => {
-    if (!commentBody.trim()) return;
-    createComment.mutate({ id, data: { userId: CURRENT_USER_ID, body: commentBody.trim() } });
+    if (!commentBody.trim() || !currentUserId) return;
+    createComment.mutate({ id, data: { userId: currentUserId, body: commentBody.trim() } });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -208,12 +211,13 @@ export default function EventDetail() {
 
   const image = event.imageUrl || `/images/${event.category.toLowerCase()}.png`;
 
-  // Join button label + variant
   let joinLabel: string;
   let joinVariant: "default" | "secondary" | "outline" = "default";
   let joinDisabled = false;
 
-  if (isAttending) {
+  if (!currentUserId) {
+    joinLabel = "Sign in to Join";
+  } else if (isAttending) {
     joinLabel = "You're Attending ✓";
     joinVariant = "secondary";
   } else if (hasPendingRequest) {
@@ -235,18 +239,10 @@ export default function EventDetail() {
       <main className="container mx-auto px-4 py-6 max-w-4xl">
         <div className="flex items-center justify-between mb-6">
           <Button variant="ghost" size="sm" className="rounded-full" onClick={() => setLocation("/")}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back
+            <ArrowLeft className="w-4 h-4 mr-2" /> Back
           </Button>
-
           {isHost && (
-            <Button
-              variant="destructive"
-              size="sm"
-              className="rounded-full"
-              onClick={handleDelete}
-              disabled={deleteEvent.isPending}
-            >
+            <Button variant="destructive" size="sm" className="rounded-full" onClick={handleDelete} disabled={deleteEvent.isPending}>
               {deleteEvent.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
               Cancel Event
             </Button>
@@ -280,10 +276,7 @@ export default function EventDetail() {
           <div className="p-6 md:p-8">
             <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-8">
               <div className="flex-1">
-                <h1 className="text-3xl md:text-5xl font-display font-bold mb-4 text-foreground">
-                  {event.title}
-                </h1>
-
+                <h1 className="text-3xl md:text-5xl font-display font-bold mb-4 text-foreground">{event.title}</h1>
                 <div className="flex flex-wrap gap-4 text-muted-foreground font-medium">
                   <div className="flex items-center gap-2 bg-muted px-4 py-2 rounded-xl">
                     <Calendar className="w-5 h-5 text-primary" />
@@ -298,9 +291,7 @@ export default function EventDetail() {
                     <span>{event.location}</span>
                     {event.distanceKm != null && (
                       <span className="ml-1 text-xs font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                        {event.distanceKm < 1
-                          ? `${Math.round(event.distanceKm * 1000)} m away`
-                          : `${event.distanceKm.toFixed(1)} km away`}
+                        {event.distanceKm < 1 ? `${Math.round(event.distanceKm * 1000)} m away` : `${event.distanceKm.toFixed(1)} km away`}
                       </span>
                     )}
                   </div>
@@ -320,9 +311,7 @@ export default function EventDetail() {
                 </div>
 
                 {isHost ? (
-                  <Button className="w-full" variant="outline" disabled>
-                    You are hosting
-                  </Button>
+                  <Button className="w-full" variant="outline" disabled>You are hosting</Button>
                 ) : (
                   <>
                     <Button
@@ -336,9 +325,7 @@ export default function EventDetail() {
                     >
                       {joinEvent.isPending || leaveEvent.isPending ? (
                         <Loader2 className="w-5 h-5 animate-spin" />
-                      ) : (
-                        joinLabel
-                      )}
+                      ) : joinLabel}
                     </Button>
                     {hasPendingRequest && (
                       <p className="text-xs text-center text-muted-foreground -mt-1">
@@ -359,7 +346,7 @@ export default function EventDetail() {
               </div>
             </div>
 
-            {/* Organizer: pending join requests panel */}
+            {/* Organizer requests panel */}
             {isHost && isApprovalRequired && (
               <>
                 <Separator className="my-6" />
@@ -368,23 +355,15 @@ export default function EventDetail() {
                     <ClipboardList className="w-5 h-5 text-primary" />
                     <h3 className="text-xl font-display font-bold">Join Requests</h3>
                     {joinRequests && joinRequests.length > 0 && (
-                      <Badge variant="secondary" className="rounded-full bg-primary text-primary-foreground">
-                        {joinRequests.length}
-                      </Badge>
+                      <Badge variant="secondary" className="rounded-full bg-primary text-primary-foreground">{joinRequests.length}</Badge>
                     )}
                   </div>
-
                   {loadingRequests ? (
-                    <div className="flex justify-center p-6">
-                      <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                    </div>
+                    <div className="flex justify-center p-6"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
                   ) : joinRequests && joinRequests.length > 0 ? (
                     <div className="space-y-3">
                       {joinRequests.map((req) => (
-                        <div
-                          key={req.id}
-                          className="flex items-center justify-between gap-4 p-4 bg-muted/30 rounded-2xl border"
-                        >
+                        <div key={req.id} className="flex items-center justify-between gap-4 p-4 bg-muted/30 rounded-2xl border">
                           <div className="flex items-center gap-3">
                             <Avatar className="w-10 h-10 border-2 border-background shadow-sm">
                               <AvatarImage src={req.userAvatar || ""} />
@@ -394,9 +373,7 @@ export default function EventDetail() {
                             </Avatar>
                             <div>
                               <p className="font-semibold text-sm text-foreground">{req.userName || "Unknown"}</p>
-                              {req.userPhone && (
-                                <p className="text-xs text-muted-foreground">{req.userPhone}</p>
-                              )}
+                              {req.userPhone && <p className="text-xs text-muted-foreground">{req.userPhone}</p>}
                               <p className="text-xs text-muted-foreground">
                                 Requested {formatDistanceToNow(new Date(req.joinedAt), { addSuffix: true })}
                               </p>
@@ -408,16 +385,14 @@ export default function EventDetail() {
                               disabled={rejectRequest.isPending || approveRequest.isPending}
                               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border border-destructive/40 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
                             >
-                              <XCircle className="w-3.5 h-3.5" />
-                              Decline
+                              <XCircle className="w-3.5 h-3.5" /> Decline
                             </button>
                             <button
                               onClick={() => approveRequest.mutate({ id, userId: req.userId })}
                               disabled={approveRequest.isPending || rejectRequest.isPending}
                               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
                             >
-                              <CheckCircle className="w-3.5 h-3.5" />
-                              Approve
+                              <CheckCircle className="w-3.5 h-3.5" /> Approve
                             </button>
                           </div>
                         </div>
@@ -439,55 +414,49 @@ export default function EventDetail() {
               <div className="md:col-span-2 space-y-8">
                 <section>
                   <h3 className="text-xl font-display font-bold mb-4">About this event</h3>
-                  <p className="text-lg leading-relaxed text-muted-foreground whitespace-pre-wrap">
-                    {event.description}
-                  </p>
+                  <p className="text-lg leading-relaxed text-muted-foreground whitespace-pre-wrap">{event.description}</p>
                 </section>
 
                 <section>
                   <div className="flex items-center gap-3 mb-6">
                     <MessageSquare className="w-5 h-5 text-primary" />
                     <h3 className="text-xl font-display font-bold">Discussion</h3>
-                    {comments && (
-                      <Badge variant="secondary" className="rounded-full">{comments.length}</Badge>
-                    )}
+                    {comments && <Badge variant="secondary" className="rounded-full">{comments.length}</Badge>}
                   </div>
 
-                  <div className="flex gap-3 mb-6">
-                    <Avatar className="w-9 h-9 shrink-0 mt-1">
-                      <AvatarFallback className="bg-primary text-primary-foreground text-sm font-bold">Y</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 space-y-2">
-                      <Textarea
-                        placeholder="Share logistics, ask a question, or just say hi..."
-                        value={commentBody}
-                        onChange={(e) => setCommentBody(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        className="resize-none min-h-[80px] rounded-2xl border-muted bg-muted/30 focus:bg-background transition-colors text-sm"
-                        disabled={createComment.isPending}
-                      />
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs text-muted-foreground">Cmd+Enter to post</p>
-                        <Button
-                          size="sm"
-                          className="rounded-full px-4"
-                          onClick={handlePostComment}
-                          disabled={!commentBody.trim() || createComment.isPending}
-                        >
-                          {createComment.isPending ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <><Send className="w-3.5 h-3.5 mr-1.5" />Post</>
-                          )}
-                        </Button>
+                  {currentUserId ? (
+                    <div className="flex gap-3 mb-6">
+                      <Avatar className="w-9 h-9 shrink-0 mt-1">
+                        <AvatarImage src={currentUser?.avatarUrl || ""} />
+                        <AvatarFallback className="bg-primary text-primary-foreground text-sm font-bold">
+                          {currentUser?.name?.charAt(0) || "Y"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 space-y-2">
+                        <Textarea
+                          placeholder="Share logistics, ask a question, or just say hi..."
+                          value={commentBody}
+                          onChange={(e) => setCommentBody(e.target.value)}
+                          onKeyDown={handleKeyDown}
+                          className="resize-none min-h-[80px] rounded-2xl border-muted bg-muted/30 focus:bg-background transition-colors text-sm"
+                          disabled={createComment.isPending}
+                        />
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs text-muted-foreground">Cmd+Enter to post</p>
+                          <Button size="sm" className="rounded-full px-4" onClick={handlePostComment} disabled={!commentBody.trim() || createComment.isPending}>
+                            {createComment.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Send className="w-3.5 h-3.5 mr-1.5" />Post</>}
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="mb-6 p-4 bg-muted/30 rounded-2xl text-center text-sm text-muted-foreground border border-dashed">
+                      <button onClick={() => setLocation("/login")} className="text-primary font-medium hover:underline">Sign in</button> to join the discussion
+                    </div>
+                  )}
 
                   {loadingComments ? (
-                    <div className="flex justify-center py-6">
-                      <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                    </div>
+                    <div className="flex justify-center py-6"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
                   ) : comments && comments.length > 0 ? (
                     <div className="space-y-4">
                       {comments.map((comment) => (
@@ -501,18 +470,14 @@ export default function EventDetail() {
                           <div className="flex-1 min-w-0">
                             <div className="bg-muted/40 rounded-2xl rounded-tl-sm px-4 py-3 border border-border/50">
                               <div className="flex items-baseline justify-between gap-2 mb-1">
-                                <span className="text-sm font-semibold text-foreground">
-                                  {comment.userName || "Community Member"}
-                                </span>
+                                <span className="text-sm font-semibold text-foreground">{comment.userName || "Community Member"}</span>
                                 <span className="text-xs text-muted-foreground shrink-0">
                                   {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
                                 </span>
                               </div>
-                              <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap break-words">
-                                {comment.body}
-                              </p>
+                              <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap break-words">{comment.body}</p>
                             </div>
-                            {comment.userId === CURRENT_USER_ID && (
+                            {currentUserId && comment.userId === currentUserId && (
                               <button
                                 onClick={() => deleteComment.mutate({ id, commentId: comment.id })}
                                 className="mt-1 ml-2 text-xs text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"
@@ -556,23 +521,14 @@ export default function EventDetail() {
                     <h3 className="text-xl font-display font-bold">Attendees</h3>
                     <Badge variant="secondary" className="rounded-full">{event.attendeeCount}</Badge>
                   </div>
-
                   {loadingAttendees ? (
-                    <div className="flex justify-center p-4">
-                      <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                    </div>
+                    <div className="flex justify-center p-4"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
                   ) : attendees && attendees.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
                       {attendees.map((user) => (
-                        <Avatar
-                          key={user.id}
-                          className="w-10 h-10 border-2 border-background shadow-sm cursor-pointer hover:-translate-y-1 transition-transform"
-                          title={user.name}
-                        >
+                        <Avatar key={user.id} className="w-10 h-10 border-2 border-background shadow-sm cursor-pointer hover:-translate-y-1 transition-transform" title={user.name}>
                           <AvatarImage src={user.avatarUrl || ""} />
-                          <AvatarFallback className="bg-muted text-muted-foreground text-xs">
-                            {user.name?.charAt(0) || "U"}
-                          </AvatarFallback>
+                          <AvatarFallback className="bg-muted text-muted-foreground text-xs">{user.name?.charAt(0) || "U"}</AvatarFallback>
                         </Avatar>
                       ))}
                     </div>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useParams, useLocation } from "wouter";
+import { useAuth } from "@/contexts/AuthContext";
 import { Navbar } from "@/components/Navbar";
 import { EventCard } from "@/components/EventCard";
 import { CameraVerification } from "@/components/CameraVerification";
@@ -37,11 +38,10 @@ import { format } from "date-fns";
 import { useUpload } from "@/hooks/use-upload";
 import { useToast } from "@/hooks/use-toast";
 
-const CURRENT_USER_ID = 1;
-
 export default function Profile() {
   const params = useParams();
-  const id = parseInt(params.id || "1");
+  const { user: currentUser } = useAuth();
+  const id = parseInt(params.id || String(currentUser?.id || 0));
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -117,7 +117,7 @@ export default function Profile() {
     );
   }
 
-  const isOwnProfile = id === CURRENT_USER_ID;
+  const isOwnProfile = !!currentUser && id === currentUser.id;
   const joinCount = user.eventsJoined ?? 0;
   const hostCount = user.eventsHosted ?? 0;
   const interestList = user.interests

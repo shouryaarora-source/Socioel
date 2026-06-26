@@ -25,6 +25,7 @@ export * from './joinRequest';
 export * from './joinRequestStatus';
 export * from './listEventsParams';
 export * from './otpSendResult';
+export * from './registerInput';
 export * from './sendOtpInput';
 export * from './uploadUrlRequest';
 export * from './uploadUrlResponse';
