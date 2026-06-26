@@ -46,15 +46,15 @@ export default function EventDetail() {
   const [commentBody, setCommentBody] = useState("");
 
   const { data: event, isLoading: loadingEvent } = useGetEvent(id, {
-    query: { enabled: !!id },
+    query: { queryKey: getGetEventQueryKey(id), enabled: !!id },
   });
 
   const { data: attendees, isLoading: loadingAttendees } = useGetEventAttendees(id, {
-    query: { enabled: !!id },
+    query: { queryKey: getGetEventAttendeesQueryKey(id), enabled: !!id },
   });
 
   const { data: comments, isLoading: loadingComments } = useGetEventComments(id, {
-    query: { enabled: !!id },
+    query: { queryKey: getGetEventCommentsQueryKey(id), enabled: !!id },
   });
 
   const joinEvent = useJoinEvent({

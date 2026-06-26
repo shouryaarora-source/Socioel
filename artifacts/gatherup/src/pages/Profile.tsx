@@ -11,6 +11,8 @@ import {
   useUpdateUser,
   useVerifyUser,
   getGetUserQueryKey,
+  getGetUserHostedEventsQueryKey,
+  getGetUserJoinedEventsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -48,15 +50,15 @@ export default function Profile() {
   const { uploadDataUrl } = useUpload();
 
   const { data: user, isLoading: loadingUser } = useGetUser(id, {
-    query: { enabled: !!id },
+    query: { queryKey: getGetUserQueryKey(id), enabled: !!id },
   });
 
   const { data: hostedEvents, isLoading: loadingHosted } = useGetUserHostedEvents(id, {
-    query: { enabled: !!id },
+    query: { queryKey: getGetUserHostedEventsQueryKey(id), enabled: !!id },
   });
 
   const { data: joinedEvents, isLoading: loadingJoined } = useGetUserJoinedEvents(id, {
-    query: { enabled: !!id },
+    query: { queryKey: getGetUserJoinedEventsQueryKey(id), enabled: !!id },
   });
 
   const updateUser = useUpdateUser({
