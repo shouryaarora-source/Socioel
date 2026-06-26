@@ -11,10 +11,14 @@ import {
   useGetEventComments,
   useCreateComment,
   useDeleteComment,
+  useGetEventJoinRequests,
+  useApproveJoinRequest,
+  useRejectJoinRequest,
   getGetEventQueryKey,
   getGetEventAttendeesQueryKey,
   getListEventsQueryKey,
   getGetEventCommentsQueryKey,
+  getGetEventJoinRequestsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -32,6 +36,11 @@ import {
   Trash2,
   MessageSquare,
   Send,
+  Lock,
+  Globe,
+  CheckCircle,
+  XCircle,
+  ClipboardList,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -57,12 +66,24 @@ export default function EventDetail() {
     query: { queryKey: getGetEventCommentsQueryKey(id), enabled: !!id },
   });
 
+  const { data: joinRequests, isLoading: loadingRequests } = useGetEventJoinRequests(id, {
+    query: { queryKey: getGetEventJoinRequestsQueryKey(id), enabled: !!id },
+  });
+
   const joinEvent = useJoinEvent({
     mutation: {
-      onSuccess: () => {
+      onSuccess: (data) => {
         queryClient.invalidateQueries({ queryKey: getGetEventQueryKey(id) });
         queryClient.invalidateQueries({ queryKey: getGetEventAttendeesQueryKey(id) });
-        toast({ title: "You're in!", description: "Successfully joined the event." });
+        queryClient.invalidateQueries({ queryKey: getGetEventJoinRequestsQueryKey(id) });
+        if (data.status === "pending") {
+          toast({ title: "Request sent!", description: "The organizer will review your request." });
+        } else {
+          toast({ title: "You're in!", description: "Successfully joined the event." });
+        }
+      },
+      onError: () => {
+        toast({ title: "Already requested", description: "You've already submitted a request for this event.", variant: "destructive" });
       },
     },
   });
@@ -72,6 +93,7 @@ export default function EventDetail() {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getGetEventQueryKey(id) });
         queryClient.invalidateQueries({ queryKey: getGetEventAttendeesQueryKey(id) });
+        queryClient.invalidateQueries({ queryKey: getGetEventJoinRequestsQueryKey(id) });
         toast({ title: "Left event", description: "You are no longer attending this event." });
       },
     },
@@ -107,6 +129,26 @@ export default function EventDetail() {
     },
   });
 
+  const approveRequest = useApproveJoinRequest({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetEventJoinRequestsQueryKey(id) });
+        queryClient.invalidateQueries({ queryKey: getGetEventAttendeesQueryKey(id) });
+        queryClient.invalidateQueries({ queryKey: getGetEventQueryKey(id) });
+        toast({ title: "Request approved" });
+      },
+    },
+  });
+
+  const rejectRequest = useRejectJoinRequest({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetEventJoinRequestsQueryKey(id) });
+        toast({ title: "Request declined" });
+      },
+    },
+  });
+
   if (loadingEvent) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -124,9 +166,7 @@ export default function EventDetail() {
         <Navbar />
         <div className="flex-1 flex flex-col items-center justify-center text-center p-4">
           <h1 className="text-2xl font-bold mb-2">Event not found</h1>
-          <Button variant="outline" onClick={() => setLocation("/")}>
-            Go back home
-          </Button>
+          <Button variant="outline" onClick={() => setLocation("/")}>Go back home</Button>
         </div>
       </div>
     );
@@ -135,9 +175,14 @@ export default function EventDetail() {
   const isAttending = attendees?.some((a) => a.id === CURRENT_USER_ID) || false;
   const isHost = event.hostId === CURRENT_USER_ID;
   const isFull = event.attendeeCount >= event.maxAttendees;
+  const isApprovalRequired = event.joinMode === "approval_required";
+
+  // Check if the current user has a pending request
+  const myRequest = joinRequests?.find((r) => r.userId === CURRENT_USER_ID);
+  const hasPendingRequest = myRequest?.status === "pending";
 
   const handleJoinLeave = () => {
-    if (isAttending) {
+    if (isAttending || hasPendingRequest) {
       leaveEvent.mutate({ id, data: { userId: CURRENT_USER_ID } });
     } else {
       joinEvent.mutate({ id, data: { userId: CURRENT_USER_ID } });
@@ -163,6 +208,26 @@ export default function EventDetail() {
 
   const image = event.imageUrl || `/images/${event.category.toLowerCase()}.png`;
 
+  // Join button label + variant
+  let joinLabel: string;
+  let joinVariant: "default" | "secondary" | "outline" = "default";
+  let joinDisabled = false;
+
+  if (isAttending) {
+    joinLabel = "You're Attending ✓";
+    joinVariant = "secondary";
+  } else if (hasPendingRequest) {
+    joinLabel = "Request Pending…";
+    joinVariant = "outline";
+  } else if (isFull) {
+    joinLabel = "Event Full";
+    joinDisabled = true;
+  } else if (isApprovalRequired) {
+    joinLabel = "Request to Join";
+  } else {
+    joinLabel = "Join Event";
+  }
+
   return (
     <div className="min-h-screen pb-20 md:pb-0 bg-background">
       <Navbar />
@@ -182,11 +247,7 @@ export default function EventDetail() {
               onClick={handleDelete}
               disabled={deleteEvent.isPending}
             >
-              {deleteEvent.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-              ) : (
-                <Trash2 className="w-4 h-4 mr-2" />
-              )}
+              {deleteEvent.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
               Cancel Event
             </Button>
           )}
@@ -198,14 +259,21 @@ export default function EventDetail() {
               src={image}
               alt={event.title}
               className="w-full h-full object-cover"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = "/images/social.png";
-              }}
+              onError={(e) => { (e.target as HTMLImageElement).src = "/images/social.png"; }}
             />
             <div className="absolute top-4 left-4 flex gap-2">
               <Badge className="bg-background/90 text-foreground backdrop-blur-md border-0 px-3 py-1 text-sm font-semibold">
                 {event.category}
               </Badge>
+              {isApprovalRequired ? (
+                <Badge className="bg-background/90 text-foreground backdrop-blur-md border-0 px-3 py-1 text-sm font-semibold flex items-center gap-1">
+                  <Lock className="w-3 h-3" /> Approval Required
+                </Badge>
+              ) : (
+                <Badge className="bg-background/90 text-foreground backdrop-blur-md border-0 px-3 py-1 text-sm font-semibold flex items-center gap-1">
+                  <Globe className="w-3 h-3" /> Open
+                </Badge>
+              )}
             </div>
           </div>
 
@@ -245,9 +313,7 @@ export default function EventDetail() {
                     <p className="text-sm text-muted-foreground font-medium mb-1">Spots left</p>
                     <p className="text-2xl font-bold font-display text-foreground">
                       {event.maxAttendees - event.attendeeCount}{" "}
-                      <span className="text-base text-muted-foreground font-normal">
-                        / {event.maxAttendees}
-                      </span>
+                      <span className="text-base text-muted-foreground font-normal">/ {event.maxAttendees}</span>
                     </p>
                   </div>
                   <Users className="w-8 h-8 text-primary opacity-20" />
@@ -258,32 +324,114 @@ export default function EventDetail() {
                     You are hosting
                   </Button>
                 ) : (
-                  <Button
-                    size="lg"
-                    className={`w-full rounded-xl text-base transition-all ${
-                      isAttending
-                        ? "bg-secondary text-secondary-foreground hover:bg-secondary/90 hover-elevate"
-                        : isFull
-                        ? ""
-                        : "hover-elevate shadow-md"
-                    }`}
-                    variant={isAttending ? "default" : isFull ? "secondary" : "default"}
-                    disabled={(!isAttending && isFull) || joinEvent.isPending || leaveEvent.isPending}
-                    onClick={handleJoinLeave}
-                  >
-                    {joinEvent.isPending || leaveEvent.isPending ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    ) : isAttending ? (
-                      "You're Attending"
-                    ) : isFull ? (
-                      "Event Full"
-                    ) : (
-                      "Join Event"
+                  <>
+                    <Button
+                      size="lg"
+                      className={`w-full rounded-xl text-base transition-all ${
+                        isAttending || hasPendingRequest ? "" : isFull ? "" : "hover-elevate shadow-md"
+                      }`}
+                      variant={joinVariant}
+                      disabled={joinDisabled || joinEvent.isPending || leaveEvent.isPending}
+                      onClick={handleJoinLeave}
+                    >
+                      {joinEvent.isPending || leaveEvent.isPending ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        joinLabel
+                      )}
+                    </Button>
+                    {hasPendingRequest && (
+                      <p className="text-xs text-center text-muted-foreground -mt-1">
+                        Waiting for the organizer's approval
+                      </p>
                     )}
-                  </Button>
+                    {(isAttending || hasPendingRequest) && (
+                      <button
+                        onClick={handleJoinLeave}
+                        disabled={leaveEvent.isPending}
+                        className="text-xs text-center text-muted-foreground hover:text-destructive transition-colors"
+                      >
+                        {hasPendingRequest ? "Cancel request" : "Leave event"}
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             </div>
+
+            {/* Organizer: pending join requests panel */}
+            {isHost && isApprovalRequired && (
+              <>
+                <Separator className="my-6" />
+                <section className="mb-8">
+                  <div className="flex items-center gap-2 mb-4">
+                    <ClipboardList className="w-5 h-5 text-primary" />
+                    <h3 className="text-xl font-display font-bold">Join Requests</h3>
+                    {joinRequests && joinRequests.length > 0 && (
+                      <Badge variant="secondary" className="rounded-full bg-primary text-primary-foreground">
+                        {joinRequests.length}
+                      </Badge>
+                    )}
+                  </div>
+
+                  {loadingRequests ? (
+                    <div className="flex justify-center p-6">
+                      <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : joinRequests && joinRequests.length > 0 ? (
+                    <div className="space-y-3">
+                      {joinRequests.map((req) => (
+                        <div
+                          key={req.id}
+                          className="flex items-center justify-between gap-4 p-4 bg-muted/30 rounded-2xl border"
+                        >
+                          <div className="flex items-center gap-3">
+                            <Avatar className="w-10 h-10 border-2 border-background shadow-sm">
+                              <AvatarImage src={req.userAvatar || ""} />
+                              <AvatarFallback className="bg-primary text-primary-foreground text-sm font-bold">
+                                {req.userName?.charAt(0) || "?"}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-semibold text-sm text-foreground">{req.userName || "Unknown"}</p>
+                              {req.userPhone && (
+                                <p className="text-xs text-muted-foreground">{req.userPhone}</p>
+                              )}
+                              <p className="text-xs text-muted-foreground">
+                                Requested {formatDistanceToNow(new Date(req.joinedAt), { addSuffix: true })}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              onClick={() => rejectRequest.mutate({ id, userId: req.userId })}
+                              disabled={rejectRequest.isPending || approveRequest.isPending}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border border-destructive/40 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                            >
+                              <XCircle className="w-3.5 h-3.5" />
+                              Decline
+                            </button>
+                            <button
+                              onClick={() => approveRequest.mutate({ id, userId: req.userId })}
+                              disabled={approveRequest.isPending || rejectRequest.isPending}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                            >
+                              <CheckCircle className="w-3.5 h-3.5" />
+                              Approve
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 bg-muted/20 rounded-2xl border border-dashed">
+                      <ClipboardList className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">No pending requests</p>
+                    </div>
+                  )}
+                </section>
+              </>
+            )}
 
             <Separator className="my-8" />
 
@@ -296,24 +444,18 @@ export default function EventDetail() {
                   </p>
                 </section>
 
-                {/* Comments Section */}
                 <section>
                   <div className="flex items-center gap-3 mb-6">
                     <MessageSquare className="w-5 h-5 text-primary" />
                     <h3 className="text-xl font-display font-bold">Discussion</h3>
                     {comments && (
-                      <Badge variant="secondary" className="rounded-full">
-                        {comments.length}
-                      </Badge>
+                      <Badge variant="secondary" className="rounded-full">{comments.length}</Badge>
                     )}
                   </div>
 
-                  {/* Post comment */}
                   <div className="flex gap-3 mb-6">
                     <Avatar className="w-9 h-9 shrink-0 mt-1">
-                      <AvatarFallback className="bg-primary text-primary-foreground text-sm font-bold">
-                        Y
-                      </AvatarFallback>
+                      <AvatarFallback className="bg-primary text-primary-foreground text-sm font-bold">Y</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 space-y-2">
                       <Textarea
@@ -335,17 +477,13 @@ export default function EventDetail() {
                           {createComment.isPending ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
                           ) : (
-                            <>
-                              <Send className="w-3.5 h-3.5 mr-1.5" />
-                              Post
-                            </>
+                            <><Send className="w-3.5 h-3.5 mr-1.5" />Post</>
                           )}
                         </Button>
                       </div>
                     </div>
                   </div>
 
-                  {/* Comment list */}
                   {loadingComments ? (
                     <div className="flex justify-center py-6">
                       <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -353,10 +491,7 @@ export default function EventDetail() {
                   ) : comments && comments.length > 0 ? (
                     <div className="space-y-4">
                       {comments.map((comment) => (
-                        <div
-                          key={comment.id}
-                          className="flex gap-3 group animate-in fade-in slide-in-from-bottom-2 duration-300"
-                        >
+                        <div key={comment.id} className="flex gap-3 group animate-in fade-in slide-in-from-bottom-2 duration-300">
                           <Avatar className="w-9 h-9 shrink-0 mt-0.5">
                             <AvatarImage src={comment.userAvatar || ""} />
                             <AvatarFallback className="bg-muted text-muted-foreground text-sm font-semibold">
@@ -393,9 +528,7 @@ export default function EventDetail() {
                     <div className="text-center py-10 bg-muted/20 rounded-2xl border border-dashed">
                       <MessageSquare className="w-8 h-8 text-muted-foreground/40 mx-auto mb-3" />
                       <p className="text-muted-foreground font-medium text-sm">No messages yet</p>
-                      <p className="text-muted-foreground/60 text-xs mt-1">
-                        Be the first to start the conversation
-                      </p>
+                      <p className="text-muted-foreground/60 text-xs mt-1">Be the first to start the conversation</p>
                     </div>
                   )}
                 </section>
@@ -421,9 +554,7 @@ export default function EventDetail() {
                 <section>
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-xl font-display font-bold">Attendees</h3>
-                    <Badge variant="secondary" className="rounded-full">
-                      {event.attendeeCount}
-                    </Badge>
+                    <Badge variant="secondary" className="rounded-full">{event.attendeeCount}</Badge>
                   </div>
 
                   {loadingAttendees ? (

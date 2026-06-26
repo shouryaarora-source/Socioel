@@ -15,6 +15,7 @@ export const eventsTable = pgTable("events", {
   imageUrl: text("image_url"),
   latitude: doublePrecision("latitude"),
   longitude: doublePrecision("longitude"),
+  joinMode: text("join_mode").notNull().default("open"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

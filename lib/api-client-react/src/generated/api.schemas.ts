@@ -9,6 +9,14 @@ export interface HealthStatus {
   status: string;
 }
 
+export type EventJoinMode = typeof EventJoinMode[keyof typeof EventJoinMode];
+
+
+export const EventJoinMode = {
+  open: 'open',
+  approval_required: 'approval_required',
+} as const;
+
 export interface Event {
   id: number;
   title: string;
@@ -32,8 +40,17 @@ export interface Event {
   longitude?: number | null;
   /** @nullable */
   distanceKm?: number | null;
+  joinMode?: EventJoinMode;
   createdAt: string;
 }
+
+export type EventInputJoinMode = typeof EventInputJoinMode[keyof typeof EventInputJoinMode];
+
+
+export const EventInputJoinMode = {
+  open: 'open',
+  approval_required: 'approval_required',
+} as const;
 
 export interface EventInput {
   title: string;
@@ -47,6 +64,7 @@ export interface EventInput {
   imageUrl?: string;
   latitude?: number;
   longitude?: number;
+  joinMode?: EventInputJoinMode;
 }
 
 export interface EventUpdate {
@@ -71,10 +89,43 @@ export interface EventStats {
   categoryCounts: EventStatsCategoryCountsItem[];
 }
 
+export type AttendanceStatus = typeof AttendanceStatus[keyof typeof AttendanceStatus];
+
+
+export const AttendanceStatus = {
+  confirmed: 'confirmed',
+  pending: 'pending',
+  rejected: 'rejected',
+} as const;
+
 export interface Attendance {
   id: number;
   eventId: number;
   userId: number;
+  status: AttendanceStatus;
+  joinedAt: string;
+}
+
+export type JoinRequestStatus = typeof JoinRequestStatus[keyof typeof JoinRequestStatus];
+
+
+export const JoinRequestStatus = {
+  confirmed: 'confirmed',
+  pending: 'pending',
+  rejected: 'rejected',
+} as const;
+
+export interface JoinRequest {
+  id: number;
+  eventId: number;
+  userId: number;
+  /** @nullable */
+  userName?: string | null;
+  /** @nullable */
+  userAvatar?: string | null;
+  /** @nullable */
+  userPhone?: string | null;
+  status: JoinRequestStatus;
   joinedAt: string;
 }
 

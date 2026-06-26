@@ -27,7 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
-import { Calendar, Clock, MapPin, Users, Type, Image as ImageIcon, Loader2 } from "lucide-react";
+import { Calendar, Clock, MapPin, Users, Type, Image as ImageIcon, Loader2, Lock, Globe } from "lucide-react";
 
 const CURRENT_USER_ID = 1;
 
@@ -42,6 +42,7 @@ const formSchema = z.object({
   time: z.string().regex(/^\d{2}:\d{2}$/, "Please enter a valid time (HH:MM)"),
   maxAttendees: z.coerce.number().min(2, "Must allow at least 2 attendees").max(1000),
   imageUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  joinMode: z.enum(["open", "approval_required"]),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -172,12 +173,15 @@ export default function CreateEvent() {
       location: "",
       latitude: undefined,
       longitude: undefined,
-      date: new Date().toISOString().split('T')[0],
+      date: new Date().toISOString().split("T")[0],
       time: "10:00",
       maxAttendees: 10,
       imageUrl: "",
+      joinMode: "open",
     },
   });
+
+  const joinMode = form.watch("joinMode");
 
   const createEvent = useCreateEvent({
     mutation: {
@@ -195,8 +199,8 @@ export default function CreateEvent() {
           description: "Something went wrong. Please try again.",
           variant: "destructive",
         });
-      }
-    }
+      },
+    },
   });
 
   function onSubmit(values: FormValues) {
@@ -214,7 +218,7 @@ export default function CreateEvent() {
   return (
     <div className="min-h-screen pb-20 md:pb-0 bg-background/50">
       <Navbar />
-      
+
       <main className="container mx-auto px-4 py-12 max-w-2xl">
         <div className="text-center mb-10">
           <h1 className="text-4xl font-display font-extrabold text-foreground tracking-tight mb-3">
@@ -228,7 +232,7 @@ export default function CreateEvent() {
         <Card className="p-6 md:p-8 rounded-3xl border shadow-sm bg-card">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-              
+
               <div className="space-y-6">
                 <div className="flex items-center gap-2 pb-2 border-b">
                   <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center">
@@ -264,7 +268,7 @@ export default function CreateEvent() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {CATEGORIES.map(cat => (
+                          {CATEGORIES.map((cat) => (
                             <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                           ))}
                         </SelectContent>
@@ -281,10 +285,10 @@ export default function CreateEvent() {
                     <FormItem>
                       <FormLabel>Description</FormLabel>
                       <FormControl>
-                        <Textarea 
-                          placeholder="What will you be doing? What should people bring?" 
-                          className="min-h-[120px] rounded-xl resize-y" 
-                          {...field} 
+                        <Textarea
+                          placeholder="What will you be doing? What should people bring?"
+                          className="min-h-[120px] rounded-xl resize-y"
+                          {...field}
                         />
                       </FormControl>
                       <FormMessage />
@@ -406,12 +410,61 @@ export default function CreateEvent() {
                     )}
                   />
                 </div>
+
+                {/* Join Mode Toggle */}
+                <FormField
+                  control={form.control}
+                  name="joinMode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Who can join?</FormLabel>
+                      <div className="flex gap-3 mt-1">
+                        <button
+                          type="button"
+                          onClick={() => field.onChange("open")}
+                          className={`flex-1 flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition-all ${
+                            joinMode === "open"
+                              ? "border-primary bg-primary/5"
+                              : "border-border hover:border-muted-foreground/30"
+                          }`}
+                        >
+                          <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${joinMode === "open" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                            <Globe className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-sm">Open to all</p>
+                            <p className="text-xs text-muted-foreground">Anyone can join instantly</p>
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => field.onChange("approval_required")}
+                          className={`flex-1 flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition-all ${
+                            joinMode === "approval_required"
+                              ? "border-primary bg-primary/5"
+                              : "border-border hover:border-muted-foreground/30"
+                          }`}
+                        >
+                          <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${joinMode === "approval_required" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                            <Lock className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-sm">Approval required</p>
+                            <p className="text-xs text-muted-foreground">You approve each request</p>
+                          </div>
+                        </button>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
 
               <div className="pt-6 border-t">
-                <Button 
-                  type="submit" 
-                  size="lg" 
+                <Button
+                  type="submit"
+                  size="lg"
                   className="w-full h-14 rounded-xl text-lg font-medium hover-elevate shadow-md"
                   disabled={createEvent.isPending}
                 >

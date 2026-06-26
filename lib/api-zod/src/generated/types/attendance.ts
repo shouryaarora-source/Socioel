@@ -5,10 +5,12 @@
  * GatherUp API - Community events platform
  * OpenAPI spec version: 0.1.0
  */
+import type { AttendanceStatus } from './attendanceStatus';
 
 export interface Attendance {
   id: number;
   eventId: number;
   userId: number;
+  status: AttendanceStatus;
   joinedAt: string;
 }

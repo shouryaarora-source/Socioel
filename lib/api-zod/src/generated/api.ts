@@ -45,6 +45,7 @@ export const ListEventsResponseItem = zod.object({
   "latitude": zod.number().nullish(),
   "longitude": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),
+  "joinMode": zod.enum(['open', 'approval_required']).optional(),
   "createdAt": zod.string()
 })
 export const ListEventsResponse = zod.array(ListEventsResponseItem)
@@ -64,7 +65,8 @@ export const CreateEventBody = zod.object({
   "maxAttendees": zod.number(),
   "imageUrl": zod.string().optional(),
   "latitude": zod.number().optional(),
-  "longitude": zod.number().optional()
+  "longitude": zod.number().optional(),
+  "joinMode": zod.enum(['open', 'approval_required']).optional()
 })
 
 export const CreateEventResponse = zod.object({
@@ -84,6 +86,7 @@ export const CreateEventResponse = zod.object({
   "latitude": zod.number().nullish(),
   "longitude": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),
+  "joinMode": zod.enum(['open', 'approval_required']).optional(),
   "createdAt": zod.string()
 })
 
@@ -108,6 +111,7 @@ export const GetFeaturedEventsResponseItem = zod.object({
   "latitude": zod.number().nullish(),
   "longitude": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),
+  "joinMode": zod.enum(['open', 'approval_required']).optional(),
   "createdAt": zod.string()
 })
 export const GetFeaturedEventsResponse = zod.array(GetFeaturedEventsResponseItem)
@@ -150,6 +154,7 @@ export const GetEventResponse = zod.object({
   "latitude": zod.number().nullish(),
   "longitude": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),
+  "joinMode": zod.enum(['open', 'approval_required']).optional(),
   "createdAt": zod.string()
 })
 
@@ -189,6 +194,7 @@ export const UpdateEventResponse = zod.object({
   "latitude": zod.number().nullish(),
   "longitude": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),
+  "joinMode": zod.enum(['open', 'approval_required']).optional(),
   "createdAt": zod.string()
 })
 
@@ -218,6 +224,7 @@ export const JoinEventResponse = zod.object({
   "id": zod.number(),
   "eventId": zod.number(),
   "userId": zod.number(),
+  "status": zod.enum(['confirmed', 'pending', 'rejected']),
   "joinedAt": zod.string()
 })
 
@@ -263,6 +270,60 @@ export const GetEventAttendeesResponseItem = zod.object({
   "createdAt": zod.string()
 })
 export const GetEventAttendeesResponse = zod.array(GetEventAttendeesResponseItem)
+
+
+/**
+ * @summary Get pending join requests for an event (organizer only)
+ */
+export const GetEventJoinRequestsParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetEventJoinRequestsResponseItem = zod.object({
+  "id": zod.number(),
+  "eventId": zod.number(),
+  "userId": zod.number(),
+  "userName": zod.string().nullish(),
+  "userAvatar": zod.string().nullish(),
+  "userPhone": zod.string().nullish(),
+  "status": zod.enum(['confirmed', 'pending', 'rejected']),
+  "joinedAt": zod.string()
+})
+export const GetEventJoinRequestsResponse = zod.array(GetEventJoinRequestsResponseItem)
+
+
+/**
+ * @summary Approve a join request
+ */
+export const ApproveJoinRequestParams = zod.object({
+  "id": zod.coerce.number(),
+  "userId": zod.coerce.number()
+})
+
+export const ApproveJoinRequestResponse = zod.object({
+  "id": zod.number(),
+  "eventId": zod.number(),
+  "userId": zod.number(),
+  "status": zod.enum(['confirmed', 'pending', 'rejected']),
+  "joinedAt": zod.string()
+})
+
+
+/**
+ * @summary Reject a join request
+ */
+export const RejectJoinRequestParams = zod.object({
+  "id": zod.coerce.number(),
+  "userId": zod.coerce.number()
+})
+
+export const RejectJoinRequestResponse = zod.object({
+  "id": zod.number(),
+  "eventId": zod.number(),
+  "userId": zod.number(),
+  "status": zod.enum(['confirmed', 'pending', 'rejected']),
+  "joinedAt": zod.string()
+})
 
 
 /**
@@ -496,6 +557,7 @@ export const GetUserHostedEventsResponseItem = zod.object({
   "latitude": zod.number().nullish(),
   "longitude": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),
+  "joinMode": zod.enum(['open', 'approval_required']).optional(),
   "createdAt": zod.string()
 })
 export const GetUserHostedEventsResponse = zod.array(GetUserHostedEventsResponseItem)
@@ -525,6 +587,7 @@ export const GetUserJoinedEventsResponseItem = zod.object({
   "latitude": zod.number().nullish(),
   "longitude": zod.number().nullish(),
   "distanceKm": zod.number().nullish(),
+  "joinMode": zod.enum(['open', 'approval_required']).optional(),
   "createdAt": zod.string()
 })
 export const GetUserJoinedEventsResponse = zod.array(GetUserJoinedEventsResponseItem)

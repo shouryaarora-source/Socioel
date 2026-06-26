@@ -242,6 +242,75 @@ paths:
                 items:
                   $ref: "#/components/schemas/User"
 
+  /events/{id}/requests:
+    get:
+      operationId: getEventJoinRequests
+      tags: [events]
+      summary: Get pending join requests for an event (organizer only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of join requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/JoinRequest"
+
+  /events/{id}/requests/{userId}/approve:
+    post:
+      operationId: approveJoinRequest
+      tags: [events]
+      summary: Approve a join request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Request approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Attendance"
+
+  /events/{id}/requests/{userId}/reject:
+    post:
+      operationId: rejectJoinRequest
+      tags: [events]
+      summary: Reject a join request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Request rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Attendance"
+
   /auth/send-otp:
     post:
       operationId: sendOtp
@@ -580,6 +649,9 @@ components:
           type: ["number", "null"]
         distanceKm:
           type: ["number", "null"]
+        joinMode:
+          type: string
+          enum: [open, approval_required]
         createdAt:
           type: string
 
@@ -609,6 +681,9 @@ components:
           type: number
         longitude:
           type: number
+        joinMode:
+          type: string
+          enum: [open, approval_required]
 
     EventUpdate:
       type: object
@@ -651,7 +726,7 @@ components:
 
     Attendance:
       type: object
-      required: [id, eventId, userId, joinedAt]
+      required: [id, eventId, userId, status, joinedAt]
       properties:
         id:
           type: integer
@@ -659,6 +734,31 @@ components:
           type: integer
         userId:
           type: integer
+        status:
+          type: string
+          enum: [confirmed, pending, rejected]
+        joinedAt:
+          type: string
+
+    JoinRequest:
+      type: object
+      required: [id, eventId, userId, status, joinedAt]
+      properties:
+        id:
+          type: integer
+        eventId:
+          type: integer
+        userId:
+          type: integer
+        userName:
+          type: ["string", "null"]
+        userAvatar:
+          type: ["string", "null"]
+        userPhone:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [confirmed, pending, rejected]
         joinedAt:
           type: string
 

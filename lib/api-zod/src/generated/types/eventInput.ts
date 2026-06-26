@@ -5,6 +5,7 @@
  * GatherUp API - Community events platform
  * OpenAPI spec version: 0.1.0
  */
+import type { EventInputJoinMode } from './eventInputJoinMode';
 
 export interface EventInput {
   title: string;
@@ -18,4 +19,5 @@ export interface EventInput {
   imageUrl?: string;
   latitude?: number;
   longitude?: number;
+  joinMode?: EventInputJoinMode;
 }

@@ -13,6 +13,9 @@ import {
   LeaveEventParams,
   LeaveEventBody,
   GetEventAttendeesParams,
+  GetEventJoinRequestsParams,
+  ApproveJoinRequestParams,
+  RejectJoinRequestParams,
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -35,12 +38,10 @@ async function buildEventResponse(event: typeof eventsTable.$inferSelect, distan
   const [{ count }] = await db
     .select({ count: sql<number>`cast(count(*) as int)` })
     .from(attendancesTable)
-    .where(eq(attendancesTable.eventId, event.id));
+    .where(and(eq(attendancesTable.eventId, event.id), eq(attendancesTable.status, "confirmed")));
 
   return {
     ...event,
-    date: event.date,
-    time: event.time,
     createdAt: event.createdAt.toISOString(),
     hostName: host?.name ?? null,
     hostAvatar: host?.avatarUrl ?? null,
@@ -128,6 +129,7 @@ router.get("/events/featured", async (_req, res): Promise<void> => {
   const subq = db
     .select({ eventId: attendancesTable.eventId, count: sql<number>`cast(count(*) as int)`.as("count") })
     .from(attendancesTable)
+    .where(eq(attendancesTable.status, "confirmed"))
     .groupBy(attendancesTable.eventId)
     .as("att_counts");
 
@@ -149,7 +151,8 @@ router.get("/events/stats", async (_req, res): Promise<void> => {
 
   const [{ totalAttendees }] = await db
     .select({ totalAttendees: sql<number>`cast(count(*) as int)` })
-    .from(attendancesTable);
+    .from(attendancesTable)
+    .where(eq(attendancesTable.status, "confirmed"));
 
   const categoryCounts = await db
     .select({
@@ -241,19 +244,27 @@ router.post("/events/:id/join", async (req, res): Promise<void> => {
     return;
   }
 
+  const [event] = await db.select().from(eventsTable).where(eq(eventsTable.id, params.data.id));
+  if (!event) {
+    res.status(404).json({ error: "Event not found" });
+    return;
+  }
+
   const [existing] = await db
     .select()
     .from(attendancesTable)
     .where(and(eq(attendancesTable.eventId, params.data.id), eq(attendancesTable.userId, parsed.data.userId)));
 
   if (existing) {
-    res.status(400).json({ error: "Already joined this event" });
+    res.status(400).json({ error: "Already joined or requested this event", status: existing.status });
     return;
   }
 
+  const status = event.joinMode === "approval_required" ? "pending" : "confirmed";
+
   const [attendance] = await db
     .insert(attendancesTable)
-    .values({ eventId: params.data.id, userId: parsed.data.userId })
+    .values({ eventId: params.data.id, userId: parsed.data.userId, status })
     .returning();
 
   res.status(201).json({ ...attendance, joinedAt: attendance.joinedAt.toISOString() });
@@ -290,7 +301,7 @@ router.get("/events/:id/attendees", async (req, res): Promise<void> => {
     .select({ user: usersTable })
     .from(attendancesTable)
     .innerJoin(usersTable, eq(attendancesTable.userId, usersTable.id))
-    .where(eq(attendancesTable.eventId, params.data.id));
+    .where(and(eq(attendancesTable.eventId, params.data.id), eq(attendancesTable.status, "confirmed")));
 
   const result = attendees.map(({ user }) => ({
     ...user,
@@ -300,6 +311,85 @@ router.get("/events/:id/attendees", async (req, res): Promise<void> => {
   }));
 
   res.json(result);
+});
+
+router.get("/events/:id/requests", async (req, res): Promise<void> => {
+  const params = GetEventJoinRequestsParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const rows = await db
+    .select({ attendance: attendancesTable, user: usersTable })
+    .from(attendancesTable)
+    .innerJoin(usersTable, eq(attendancesTable.userId, usersTable.id))
+    .where(and(eq(attendancesTable.eventId, params.data.id), eq(attendancesTable.status, "pending")));
+
+  const result = rows.map(({ attendance, user }) => ({
+    id: attendance.id,
+    eventId: attendance.eventId,
+    userId: attendance.userId,
+    status: attendance.status,
+    joinedAt: attendance.joinedAt.toISOString(),
+    userName: user.name ?? null,
+    userAvatar: user.avatarUrl ?? null,
+    userPhone: user.phone ?? null,
+  }));
+
+  res.json(result);
+});
+
+router.post("/events/:id/requests/:userId/approve", async (req, res): Promise<void> => {
+  const params = ApproveJoinRequestParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const [attendance] = await db
+    .update(attendancesTable)
+    .set({ status: "confirmed" })
+    .where(
+      and(
+        eq(attendancesTable.eventId, params.data.id),
+        eq(attendancesTable.userId, params.data.userId)
+      )
+    )
+    .returning();
+
+  if (!attendance) {
+    res.status(404).json({ error: "Request not found" });
+    return;
+  }
+
+  res.json({ ...attendance, joinedAt: attendance.joinedAt.toISOString() });
+});
+
+router.post("/events/:id/requests/:userId/reject", async (req, res): Promise<void> => {
+  const params = RejectJoinRequestParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const [attendance] = await db
+    .update(attendancesTable)
+    .set({ status: "rejected" })
+    .where(
+      and(
+        eq(attendancesTable.eventId, params.data.id),
+        eq(attendancesTable.userId, params.data.userId)
+      )
+    )
+    .returning();
+
+  if (!attendance) {
+    res.status(404).json({ error: "Request not found" });
+    return;
+  }
+
+  res.json({ ...attendance, joinedAt: attendance.joinedAt.toISOString() });
 });
 
 export default router;

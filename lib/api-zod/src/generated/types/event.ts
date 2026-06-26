@@ -5,6 +5,7 @@
  * GatherUp API - Community events platform
  * OpenAPI spec version: 0.1.0
  */
+import type { EventJoinMode } from './eventJoinMode';
 
 export interface Event {
   id: number;
@@ -29,5 +30,6 @@ export interface Event {
   longitude?: number | null;
   /** @nullable */
   distanceKm?: number | null;
+  joinMode?: EventJoinMode;
   createdAt: string;
 }

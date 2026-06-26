@@ -31,6 +31,7 @@ import type {
   EventStats,
   EventUpdate,
   HealthStatus,
+  JoinRequest,
   ListEventsParams,
   OtpSendResult,
   SendOtpInput,
@@ -891,6 +892,227 @@ export function useGetEventAttendees<TData = Awaited<ReturnType<typeof getEventA
 
 
 
+
+export const getGetEventJoinRequestsUrl = (id: number,) => {
+
+
+
+
+  return `/api/events/${id}/requests`
+}
+
+/**
+ * @summary Get pending join requests for an event (organizer only)
+ */
+export const getEventJoinRequests = async (id: number, options?: RequestInit): Promise<JoinRequest[]> => {
+
+  return customFetch<JoinRequest[]>(getGetEventJoinRequestsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetEventJoinRequestsQueryKey = (id: number,) => {
+    return [
+    `/api/events/${id}/requests`
+    ] as const;
+    }
+
+
+export const getGetEventJoinRequestsQueryOptions = <TData = Awaited<ReturnType<typeof getEventJoinRequests>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEventJoinRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetEventJoinRequestsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getEventJoinRequests>>> = ({ signal }) => getEventJoinRequests(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getEventJoinRequests>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetEventJoinRequestsQueryResult = NonNullable<Awaited<ReturnType<typeof getEventJoinRequests>>>
+export type GetEventJoinRequestsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get pending join requests for an event (organizer only)
+ */
+
+export function useGetEventJoinRequests<TData = Awaited<ReturnType<typeof getEventJoinRequests>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEventJoinRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetEventJoinRequestsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getApproveJoinRequestUrl = (id: number,
+    userId: number,) => {
+
+
+
+
+  return `/api/events/${id}/requests/${userId}/approve`
+}
+
+/**
+ * @summary Approve a join request
+ */
+export const approveJoinRequest = async (id: number,
+    userId: number, options?: RequestInit): Promise<Attendance> => {
+
+  return customFetch<Attendance>(getApproveJoinRequestUrl(id,userId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getApproveJoinRequestMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveJoinRequest>>, TError,{id: number;userId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof approveJoinRequest>>, TError,{id: number;userId: number}, TContext> => {
+
+const mutationKey = ['approveJoinRequest'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof approveJoinRequest>>, {id: number;userId: number}> = (props) => {
+          const {id,userId} = props ?? {};
+
+          return  approveJoinRequest(id,userId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApproveJoinRequestMutationResult = NonNullable<Awaited<ReturnType<typeof approveJoinRequest>>>
+
+    export type ApproveJoinRequestMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Approve a join request
+ */
+export const useApproveJoinRequest = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveJoinRequest>>, TError,{id: number;userId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof approveJoinRequest>>,
+        TError,
+        {id: number;userId: number},
+        TContext
+      > => {
+      return useMutation(getApproveJoinRequestMutationOptions(options));
+    }
+
+export const getRejectJoinRequestUrl = (id: number,
+    userId: number,) => {
+
+
+
+
+  return `/api/events/${id}/requests/${userId}/reject`
+}
+
+/**
+ * @summary Reject a join request
+ */
+export const rejectJoinRequest = async (id: number,
+    userId: number, options?: RequestInit): Promise<Attendance> => {
+
+  return customFetch<Attendance>(getRejectJoinRequestUrl(id,userId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getRejectJoinRequestMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rejectJoinRequest>>, TError,{id: number;userId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof rejectJoinRequest>>, TError,{id: number;userId: number}, TContext> => {
+
+const mutationKey = ['rejectJoinRequest'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof rejectJoinRequest>>, {id: number;userId: number}> = (props) => {
+          const {id,userId} = props ?? {};
+
+          return  rejectJoinRequest(id,userId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RejectJoinRequestMutationResult = NonNullable<Awaited<ReturnType<typeof rejectJoinRequest>>>
+
+    export type RejectJoinRequestMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Reject a join request
+ */
+export const useRejectJoinRequest = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rejectJoinRequest>>, TError,{id: number;userId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof rejectJoinRequest>>,
+        TError,
+        {id: number;userId: number},
+        TContext
+      > => {
+      return useMutation(getRejectJoinRequestMutationOptions(options));
+    }
 
 export const getSendOtpUrl = () => {
 
