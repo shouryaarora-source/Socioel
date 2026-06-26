@@ -329,29 +329,17 @@ export const RejectJoinRequestResponse = zod.object({
 
 
 /**
- * @summary Send OTP to phone number
+ * @summary Log in with identifier and password
  */
-export const SendOtpBody = zod.object({
-  "identifier": zod.string().describe('Phone number or email address')
+
+
+
+export const LoginBody = zod.object({
+  "identifier": zod.string().describe('Phone number or email address'),
+  "password": zod.string().min(1)
 })
 
-export const SendOtpResponse = zod.object({
-  "success": zod.boolean(),
-  "message": zod.string(),
-  "phone": zod.string().nullish().describe('The phone number OTP was sent to (useful when signing in by email)'),
-  "devCode": zod.string().nullish()
-})
-
-
-/**
- * @summary Verify OTP and log in
- */
-export const VerifyOtpBody = zod.object({
-  "phone": zod.string(),
-  "code": zod.string()
-})
-
-export const VerifyOtpResponse = zod.object({
+export const LoginResponse = zod.object({
   "success": zod.boolean(),
   "user": zod.object({
   "id": zod.number(),
@@ -373,8 +361,7 @@ export const VerifyOtpResponse = zod.object({
   "eventsHosted": zod.number().nullish(),
   "eventsJoined": zod.number().nullish(),
   "createdAt": zod.string()
-}).optional(),
-  "isNewUser": zod.boolean().optional().describe('True when phone is verified but no account exists yet')
+}).optional()
 })
 
 
@@ -405,8 +392,12 @@ export const GetMeResponse = zod.object({
 
 
 /**
- * @summary Register a new user (verifies OTP and creates account)
+ * @summary Register a new user with a password
  */
+export const registerBodyPasswordMin = 6;
+
+
+
 export const RegisterBody = zod.object({
   "name": zod.string(),
   "phone": zod.string(),
@@ -414,7 +405,7 @@ export const RegisterBody = zod.object({
   "gender": zod.string().optional(),
   "age": zod.number().optional(),
   "profession": zod.string().optional(),
-  "code": zod.string().describe('OTP code that was sent to the phone')
+  "password": zod.string().min(registerBodyPasswordMin).describe('Account password (min 6 characters)')
 })
 
 export const RegisterResponse = zod.object({
@@ -439,8 +430,7 @@ export const RegisterResponse = zod.object({
   "eventsHosted": zod.number().nullish(),
   "eventsJoined": zod.number().nullish(),
   "createdAt": zod.string()
-}).optional(),
-  "isNewUser": zod.boolean().optional().describe('True when phone is verified but no account exists yet')
+}).optional()
 })
 
 

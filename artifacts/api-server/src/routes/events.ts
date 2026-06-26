@@ -303,12 +303,15 @@ router.get("/events/:id/attendees", async (req, res): Promise<void> => {
     .innerJoin(usersTable, eq(attendancesTable.userId, usersTable.id))
     .where(and(eq(attendancesTable.eventId, params.data.id), eq(attendancesTable.status, "confirmed")));
 
-  const result = attendees.map(({ user }) => ({
-    ...user,
-    createdAt: user.createdAt.toISOString(),
-    eventsHosted: null,
-    eventsJoined: null,
-  }));
+  const result = attendees.map(({ user }) => {
+    const { passwordHash: _passwordHash, ...rest } = user;
+    return {
+      ...rest,
+      createdAt: user.createdAt.toISOString(),
+      eventsHosted: null,
+      eventsJoined: null,
+    };
+  });
 
   res.json(result);
 });

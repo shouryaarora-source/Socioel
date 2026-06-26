@@ -19,8 +19,9 @@ function serializeUser(
   hostedCount = 0,
   joinedCount = 0
 ) {
+  const { passwordHash: _passwordHash, ...rest } = user;
   return {
-    ...user,
+    ...rest,
     createdAt: user.createdAt.toISOString(),
     verifiedAt: user.verifiedAt?.toISOString() ?? null,
     eventsHosted: hostedCount,

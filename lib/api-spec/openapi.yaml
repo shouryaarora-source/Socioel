@@ -311,36 +311,17 @@ paths:
               schema:
                 $ref: "#/components/schemas/Attendance"
 
-  /auth/send-otp:
+  /auth/login:
     post:
-      operationId: sendOtp
+      operationId: login
       tags: [auth]
-      summary: Send OTP to phone number
+      summary: Log in with identifier and password
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SendOtpInput"
-      responses:
-        "200":
-          description: OTP sent
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/OtpSendResult"
-
-  /auth/verify-otp:
-    post:
-      operationId: verifyOtp
-      tags: [auth]
-      summary: Verify OTP and log in
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/VerifyOtpInput"
+              $ref: "#/components/schemas/LoginInput"
       responses:
         "200":
           description: Logged in successfully
@@ -349,7 +330,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/AuthResponse"
         "401":
-          description: Invalid or expired code
+          description: Invalid credentials
 
   /auth/me:
     get:
@@ -370,7 +351,7 @@ paths:
     post:
       operationId: register
       tags: [auth]
-      summary: Register a new user (verifies OTP and creates account)
+      summary: Register a new user with a password
       requestBody:
         required: true
         content:
@@ -385,9 +366,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/AuthResponse"
         "400":
-          description: Validation error or phone already registered
-        "401":
-          description: Invalid or expired OTP code
+          description: Validation error or account already exists
 
   /auth/logout:
     post:
@@ -940,36 +919,16 @@ components:
         body:
           type: string
 
-    SendOtpInput:
+    LoginInput:
       type: object
-      required: [identifier]
+      required: [identifier, password]
       properties:
         identifier:
           type: string
           description: Phone number or email address
-
-    OtpSendResult:
-      type: object
-      required: [success, message]
-      properties:
-        success:
-          type: boolean
-        message:
+        password:
           type: string
-        phone:
-          type: ["string", "null"]
-          description: The phone number OTP was sent to (useful when signing in by email)
-        devCode:
-          type: ["string", "null"]
-
-    VerifyOtpInput:
-      type: object
-      required: [phone, code]
-      properties:
-        phone:
-          type: string
-        code:
-          type: string
+          minLength: 1
 
     AuthResponse:
       type: object
@@ -979,13 +938,10 @@ components:
           type: boolean
         user:
           $ref: "#/components/schemas/User"
-        isNewUser:
-          type: boolean
-          description: True when phone is verified but no account exists yet
 
     RegisterInput:
       type: object
-      required: [name, phone, code]
+      required: [name, phone, password]
       properties:
         name:
           type: string
@@ -999,6 +955,7 @@ components:
           type: integer
         profession:
           type: string
-        code:
+        password:
           type: string
-          description: OTP code that was sent to the phone
+          minLength: 6
+          description: Account password (min 6 characters)

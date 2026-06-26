@@ -10,6 +10,4 @@ import type { User } from './user';
 export interface AuthResponse {
   success: boolean;
   user?: User;
-  /** True when phone is verified but no account exists yet */
-  isNewUser?: boolean;
 }

@@ -1,12 +1,27 @@
 import { Router, type IRouter } from "express";
-import { eq, and, gt } from "drizzle-orm";
-import { db, usersTable, otpsTable } from "@workspace/db";
-import { SendOtpBody, VerifyOtpBody, RegisterBody } from "@workspace/api-zod";
+import { eq } from "drizzle-orm";
+import { scrypt, randomBytes, timingSafeEqual } from "node:crypto";
+import { promisify } from "node:util";
+import { db, usersTable } from "@workspace/db";
+import { LoginBody, RegisterBody } from "@workspace/api-zod";
 
 const router: IRouter = Router();
 
-function generateOtp(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+const scryptAsync = promisify(scrypt);
+
+async function hashPassword(password: string): Promise<string> {
+  const salt = randomBytes(16).toString("hex");
+  const buf = (await scryptAsync(password, salt, 64)) as Buffer;
+  return `${buf.toString("hex")}.${salt}`;
+}
+
+async function verifyPassword(password: string, stored: string): Promise<boolean> {
+  const [hashed, salt] = stored.split(".");
+  if (!hashed || !salt) return false;
+  const hashedBuf = Buffer.from(hashed, "hex");
+  const suppliedBuf = (await scryptAsync(password, salt, 64)) as Buffer;
+  if (hashedBuf.length !== suppliedBuf.length) return false;
+  return timingSafeEqual(hashedBuf, suppliedBuf);
 }
 
 function normalizePhone(phone: string): string {
@@ -17,104 +32,20 @@ function isEmail(identifier: string): boolean {
   return identifier.includes("@");
 }
 
+function regenerateSession(req: { session: { regenerate: (cb: (err?: unknown) => void) => void } }): Promise<void> {
+  return new Promise((resolve, reject) => {
+    req.session.regenerate((err) => (err ? reject(err) : resolve()));
+  });
+}
+
 function serializeUser(user: typeof usersTable.$inferSelect) {
+  const { passwordHash: _passwordHash, ...rest } = user;
   return {
-    ...user,
+    ...rest,
     createdAt: user.createdAt.toISOString(),
     verifiedAt: user.verifiedAt?.toISOString() ?? null,
   };
 }
-
-router.post("/auth/send-otp", async (req, res): Promise<void> => {
-  const parsed = SendOtpBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "Invalid input" });
-    return;
-  }
-
-  const identifier = parsed.data.identifier.trim();
-  let phone: string;
-
-  if (isEmail(identifier)) {
-    const [user] = await db
-      .select()
-      .from(usersTable)
-      .where(eq(usersTable.email, identifier.toLowerCase()))
-      .limit(1);
-
-    if (!user || !user.phone) {
-      res.status(404).json({ error: "No account found with this email address" });
-      return;
-    }
-    phone = user.phone;
-  } else {
-    phone = normalizePhone(identifier);
-  }
-
-  const code = generateOtp();
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-  await db.insert(otpsTable).values({ phone, code, expiresAt });
-
-  res.json({
-    success: true,
-    message: "OTP sent",
-    phone,
-    ...(process.env["NODE_ENV"] !== "production" && { devCode: code }),
-  });
-});
-
-router.post("/auth/verify-otp", async (req, res): Promise<void> => {
-  const parsed = VerifyOtpBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "Invalid input" });
-    return;
-  }
-
-  const phone = normalizePhone(parsed.data.phone);
-  const { code } = parsed.data;
-
-  const [otp] = await db
-    .select()
-    .from(otpsTable)
-    .where(
-      and(
-        eq(otpsTable.phone, phone),
-        eq(otpsTable.code, code),
-        eq(otpsTable.used, false),
-        gt(otpsTable.expiresAt, new Date()),
-      )
-    )
-    .orderBy(otpsTable.createdAt)
-    .limit(1);
-
-  if (!otp) {
-    res.status(401).json({ error: "Invalid or expired code" });
-    return;
-  }
-
-  await db.update(otpsTable).set({ used: true }).where(eq(otpsTable.id, otp.id));
-
-  const [user] = await db
-    .select()
-    .from(usersTable)
-    .where(eq(usersTable.phone, phone))
-    .limit(1);
-
-  if (!user) {
-    // Phone verified but no account — frontend should show sign-up form
-    res.json({ success: true, isNewUser: true });
-    return;
-  }
-
-  if (!user.phoneVerified) {
-    await db.update(usersTable).set({ phoneVerified: true }).where(eq(usersTable.id, user.id));
-  }
-
-  req.session.userId = user.id;
-  req.session.phone = phone;
-
-  res.json({ success: true, user: serializeUser(user), isNewUser: false });
-});
 
 router.post("/auth/register", async (req, res): Promise<void> => {
   const parsed = RegisterBody.safeParse(req.body);
@@ -123,28 +54,14 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     return;
   }
 
-  const { name, phone: rawPhone, email, gender, age, profession, code } = parsed.data;
-  const phone = normalizePhone(rawPhone);
+  const { name, phone: rawPhone, email, gender, age, profession, password } = parsed.data;
 
-  // Verify OTP
-  const [otp] = await db
-    .select()
-    .from(otpsTable)
-    .where(
-      and(
-        eq(otpsTable.phone, phone),
-        eq(otpsTable.code, code),
-        eq(otpsTable.used, false),
-        gt(otpsTable.expiresAt, new Date()),
-      )
-    )
-    .orderBy(otpsTable.createdAt)
-    .limit(1);
-
-  if (!otp) {
-    res.status(401).json({ error: "Invalid or expired code. Please request a new one." });
+  if (password.length < 6) {
+    res.status(400).json({ error: "Password must be at least 6 characters." });
     return;
   }
+
+  const phone = normalizePhone(rawPhone);
 
   // Check phone not already registered
   const [existingPhone] = await db
@@ -163,7 +80,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     const [existingEmail] = await db
       .select()
       .from(usersTable)
-      .where(eq(usersTable.email, email.toLowerCase()))
+      .where(eq(usersTable.email, email.trim().toLowerCase()))
       .limit(1);
 
     if (existingEmail) {
@@ -172,25 +89,64 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     }
   }
 
-  await db.update(otpsTable).set({ used: true }).where(eq(otpsTable.id, otp.id));
+  const passwordHash = await hashPassword(password);
 
   const [user] = await db
     .insert(usersTable)
     .values({
       name: name.trim(),
       phone,
-      email: email ? email.toLowerCase() : undefined,
+      email: email ? email.trim().toLowerCase() : undefined,
       gender: gender ?? undefined,
       age: age ?? undefined,
       profession: profession ?? undefined,
-      phoneVerified: true,
+      passwordHash,
     })
     .returning();
 
+  await regenerateSession(req);
   req.session.userId = user.id;
   req.session.phone = phone;
 
   res.status(201).json({ success: true, user: serializeUser(user) });
+});
+
+router.post("/auth/login", async (req, res): Promise<void> => {
+  const parsed = LoginBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input" });
+    return;
+  }
+
+  const identifier = parsed.data.identifier.trim();
+  const { password } = parsed.data;
+
+  const [user] = await db
+    .select()
+    .from(usersTable)
+    .where(
+      isEmail(identifier)
+        ? eq(usersTable.email, identifier.toLowerCase())
+        : eq(usersTable.phone, normalizePhone(identifier))
+    )
+    .limit(1);
+
+  if (!user || !user.passwordHash) {
+    res.status(401).json({ error: "Invalid phone/email or password." });
+    return;
+  }
+
+  const valid = await verifyPassword(password, user.passwordHash);
+  if (!valid) {
+    res.status(401).json({ error: "Invalid phone/email or password." });
+    return;
+  }
+
+  await regenerateSession(req);
+  req.session.userId = user.id;
+  req.session.phone = user.phone ?? undefined;
+
+  res.json({ success: true, user: serializeUser(user) });
 });
 
 router.get("/auth/me", async (req, res): Promise<void> => {

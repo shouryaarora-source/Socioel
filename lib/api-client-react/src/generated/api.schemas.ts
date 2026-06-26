@@ -230,33 +230,16 @@ export interface CommentInput {
   body: string;
 }
 
-export interface SendOtpInput {
+export interface LoginInput {
   /** Phone number or email address */
   identifier: string;
-}
-
-export interface OtpSendResult {
-  success: boolean;
-  message: string;
-  /**
-     * The phone number OTP was sent to (useful when signing in by email)
-     * @nullable
-     */
-  phone?: string | null;
-  /** @nullable */
-  devCode?: string | null;
-}
-
-export interface VerifyOtpInput {
-  phone: string;
-  code: string;
+  /** @minLength 1 */
+  password: string;
 }
 
 export interface AuthResponse {
   success: boolean;
   user?: User;
-  /** True when phone is verified but no account exists yet */
-  isNewUser?: boolean;
 }
 
 export interface RegisterInput {
@@ -266,8 +249,11 @@ export interface RegisterInput {
   gender?: string;
   age?: number;
   profession?: string;
-  /** OTP code that was sent to the phone */
-  code: string;
+  /**
+     * Account password (min 6 characters)
+     * @minLength 6
+     */
+  password: string;
 }
 
 export type ListEventsParams = {

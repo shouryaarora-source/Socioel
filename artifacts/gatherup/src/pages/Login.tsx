@@ -4,33 +4,30 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Loader2, Phone, ShieldCheck, ArrowLeft, RefreshCw,
-  User, Mail, ChevronDown, ChevronUp,
+  Loader2, Phone, Mail, User, Lock, Eye, EyeOff,
+  ChevronDown, ChevronUp,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 type Mode = "signin" | "signup";
-type Step = "details" | "otp";
 
 const GENDERS = ["Male", "Female", "Non-binary", "Prefer not to say"];
 
 export default function Login() {
   const [mode, setMode] = useState<Mode>("signin");
-  const [step, setStep] = useState<Step>("details");
-
-  // Shared OTP state
-  const [otp, setOtp] = useState("");
-  const [devCode, setDevCode] = useState<string | null>(null);
-  const [otpPhone, setOtpPhone] = useState(""); // actual phone OTP was sent to
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Sign In state
   const [identifier, setIdentifier] = useState("");
+  const [signInPassword, setSignInPassword] = useState("");
 
   // Sign Up state
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [gender, setGender] = useState("");
   const [age, setAge] = useState("");
   const [profession, setProfession] = useState("");
@@ -42,57 +39,20 @@ export default function Login() {
 
   // ─── Sign In ────────────────────────────────────────────────────────────────
 
-  async function handleSignInSendOtp(e: React.FormEvent) {
+  async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
-    if (!identifier.trim()) return;
+    if (!identifier.trim() || !signInPassword) return;
     setIsLoading(true);
     try {
-      const res = await fetch("/api/auth/send-otp", {
+      const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ identifier: identifier.trim() }),
+        body: JSON.stringify({ identifier: identifier.trim(), password: signInPassword }),
       });
       const data = await res.json();
       if (!res.ok) {
-        toast({ title: "Error", description: data.error || "Failed to send code", variant: "destructive" });
-        return;
-      }
-      setOtpPhone(data.phone ?? identifier.trim());
-      if (data.devCode) setDevCode(data.devCode);
-      setStep("otp");
-    } catch {
-      toast({ title: "Error", description: "Network error. Please try again.", variant: "destructive" });
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  async function handleSignInVerify(e: React.FormEvent) {
-    e.preventDefault();
-    if (otp.length !== 6) return;
-    setIsLoading(true);
-    try {
-      const res = await fetch("/api/auth/verify-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ phone: otpPhone, code: otp }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        toast({ title: "Invalid code", description: data.error || "Please check and try again.", variant: "destructive" });
-        setOtp("");
-        return;
-      }
-      if (data.isNewUser) {
-        // Phone verified but no account — move to sign-up with phone prefilled
-        setPhone(otpPhone);
-        setMode("signup");
-        setStep("details");
-        setOtp("");
-        setDevCode(null);
-        toast({ title: "Phone verified!", description: "Fill in your details to create your account." });
+        toast({ title: "Sign in failed", description: data.error || "Please check your details.", variant: "destructive" });
         return;
       }
       login(data.user);
@@ -107,41 +67,23 @@ export default function Login() {
 
   // ─── Sign Up ────────────────────────────────────────────────────────────────
 
-  async function handleSignUpSendOtp(e: React.FormEvent) {
+  async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim() || !phone.trim()) return;
-    setIsLoading(true);
-    try {
-      const res = await fetch("/api/auth/send-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ identifier: phone.trim() }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        toast({ title: "Error", description: data.error || "Failed to send code", variant: "destructive" });
-        return;
-      }
-      setOtpPhone(data.phone ?? phone.trim());
-      if (data.devCode) setDevCode(data.devCode);
-      setStep("otp");
-    } catch {
-      toast({ title: "Error", description: "Network error. Please try again.", variant: "destructive" });
-    } finally {
-      setIsLoading(false);
+    if (!name.trim() || !phone.trim() || !password) return;
+    if (password.length < 6) {
+      toast({ title: "Password too short", description: "Use at least 6 characters.", variant: "destructive" });
+      return;
     }
-  }
-
-  async function handleRegister(e: React.FormEvent) {
-    e.preventDefault();
-    if (otp.length !== 6) return;
+    if (password !== confirmPassword) {
+      toast({ title: "Passwords don't match", description: "Please re-enter your password.", variant: "destructive" });
+      return;
+    }
     setIsLoading(true);
     try {
       const body: Record<string, unknown> = {
         name: name.trim(),
-        phone: otpPhone,
-        code: otp,
+        phone: phone.trim(),
+        password,
       };
       if (email.trim()) body.email = email.trim().toLowerCase();
       if (gender) body.gender = gender;
@@ -157,11 +99,6 @@ export default function Login() {
       const data = await res.json();
       if (!res.ok) {
         toast({ title: "Registration failed", description: data.error || "Please try again.", variant: "destructive" });
-        if (res.status === 400 && data.error?.includes("already registered")) {
-          setStep("details");
-        } else {
-          setOtp("");
-        }
         return;
       }
       login(data.user);
@@ -174,21 +111,9 @@ export default function Login() {
     }
   }
 
-  function handleOtpChange(val: string) {
-    if (/^\d{0,6}$/.test(val)) setOtp(val);
-  }
-
-  function resetToDetails() {
-    setStep("details");
-    setOtp("");
-    setDevCode(null);
-  }
-
   function switchMode(m: Mode) {
     setMode(m);
-    setStep("details");
-    setOtp("");
-    setDevCode(null);
+    setShowPassword(false);
   }
 
   // ─── Render ─────────────────────────────────────────────────────────────────
@@ -233,13 +158,13 @@ export default function Login() {
         <div className="bg-card rounded-3xl border shadow-sm p-6">
 
           {/* ── SIGN IN ── */}
-          {mode === "signin" && step === "details" && (
+          {mode === "signin" && (
             <>
               <div className="mb-5">
                 <h2 className="font-display font-bold text-xl text-foreground mb-1">Welcome back</h2>
-                <p className="text-sm text-muted-foreground">Enter your phone number or email to continue.</p>
+                <p className="text-sm text-muted-foreground">Sign in with your phone or email.</p>
               </div>
-              <form onSubmit={handleSignInSendOtp} className="space-y-4">
+              <form onSubmit={handleSignIn} className="space-y-4">
                 <div>
                   <label className="text-sm font-medium text-foreground block mb-1.5">Phone or Email</label>
                   <div className="relative">
@@ -250,73 +175,57 @@ export default function Login() {
                       value={identifier}
                       onChange={(e) => setIdentifier(e.target.value)}
                       className="pl-10 rounded-xl h-12"
+                      autoComplete="username"
                       autoFocus
                       disabled={isLoading}
                     />
                   </div>
                 </div>
-                <Button type="submit" className="w-full rounded-xl h-11" disabled={isLoading || !identifier.trim()}>
-                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                  Send Code
-                </Button>
-              </form>
-            </>
-          )}
-
-          {mode === "signin" && step === "otp" && (
-            <>
-              <button onClick={resetToDetails} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-5 -ml-1 transition-colors">
-                <ArrowLeft className="w-4 h-4" /> Back
-              </button>
-              <div className="mb-5">
-                <h2 className="font-display font-bold text-xl text-foreground mb-1">Enter code</h2>
-                <p className="text-sm text-muted-foreground">
-                  We sent a 6-digit code to <span className="font-medium text-foreground">{otpPhone}</span>
-                </p>
-              </div>
-              {devCode && (
-                <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
-                  <p className="text-xs text-amber-700 font-medium mb-1">Dev mode — your code:</p>
-                  <p className="text-2xl font-mono font-bold tracking-widest text-amber-800">{devCode}</p>
+                <div>
+                  <label className="text-sm font-medium text-foreground block mb-1.5">Password</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Your password"
+                      value={signInPassword}
+                      onChange={(e) => setSignInPassword(e.target.value)}
+                      className="pl-10 pr-10 rounded-xl h-12"
+                      autoComplete="current-password"
+                      disabled={isLoading}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
-              )}
-              <form onSubmit={handleSignInVerify} className="space-y-4">
-                <Input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="\d{6}"
-                  maxLength={6}
-                  placeholder="000000"
-                  value={otp}
-                  onChange={(e) => handleOtpChange(e.target.value)}
-                  className="rounded-xl text-center text-2xl font-mono tracking-widest h-14"
-                  autoFocus
-                  disabled={isLoading}
-                />
-                <Button type="submit" className="w-full rounded-xl h-11" disabled={isLoading || otp.length !== 6}>
-                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ShieldCheck className="w-4 h-4 mr-2" />}
-                  Verify & Sign In
+                <Button type="submit" className="w-full rounded-xl h-11" disabled={isLoading || !identifier.trim() || !signInPassword}>
+                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                  Sign In
                 </Button>
-                <button
-                  type="button"
-                  onClick={handleSignInSendOtp}
-                  disabled={isLoading}
-                  className="w-full text-sm text-muted-foreground hover:text-primary transition-colors flex items-center justify-center gap-1.5 py-1"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" /> Resend code
-                </button>
               </form>
+              <p className="text-center text-sm text-muted-foreground mt-5">
+                Don't have an account?{" "}
+                <button onClick={() => switchMode("signup")} className="text-primary font-medium hover:underline">
+                  Create one
+                </button>
+              </p>
             </>
           )}
 
           {/* ── SIGN UP ── */}
-          {mode === "signup" && step === "details" && (
+          {mode === "signup" && (
             <>
               <div className="mb-5">
                 <h2 className="font-display font-bold text-xl text-foreground mb-1">Create your account</h2>
                 <p className="text-sm text-muted-foreground">Tell us a bit about yourself.</p>
               </div>
-              <form onSubmit={handleSignUpSendOtp} className="space-y-4">
+              <form onSubmit={handleSignUp} className="space-y-4">
 
                 {/* Name */}
                 <div>
@@ -363,9 +272,60 @@ export default function Login() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="pl-10 rounded-xl h-12"
+                      autoComplete="email"
+                      required
                       disabled={isLoading}
                     />
                   </div>
+                </div>
+
+                {/* Password */}
+                <div>
+                  <label className="text-sm font-medium text-foreground block mb-1.5">Password <span className="text-destructive">*</span></label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="At least 6 characters"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="pl-10 pr-10 rounded-xl h-12"
+                      autoComplete="new-password"
+                      required
+                      disabled={isLoading}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Confirm Password */}
+                <div>
+                  <label className="text-sm font-medium text-foreground block mb-1.5">Confirm Password <span className="text-destructive">*</span></label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Re-enter your password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className={`pl-10 rounded-xl h-12 ${
+                        confirmPassword && password !== confirmPassword ? "border-destructive focus-visible:ring-destructive" : ""
+                      }`}
+                      autoComplete="new-password"
+                      required
+                      disabled={isLoading}
+                    />
+                  </div>
+                  {confirmPassword && password !== confirmPassword && (
+                    <p className="text-xs text-destructive mt-1">Passwords don't match</p>
+                  )}
                 </div>
 
                 {/* Optional fields toggle */}
@@ -433,57 +393,11 @@ export default function Login() {
                 <Button
                   type="submit"
                   className="w-full rounded-xl h-11 mt-2"
-                  disabled={isLoading || !name.trim() || !phone.trim()}
+                  disabled={isLoading || !name.trim() || !phone.trim() || !password}
                 >
                   {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                  Send Verification Code
-                </Button>
-              </form>
-            </>
-          )}
-
-          {mode === "signup" && step === "otp" && (
-            <>
-              <button onClick={resetToDetails} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-5 -ml-1 transition-colors">
-                <ArrowLeft className="w-4 h-4" /> Back
-              </button>
-              <div className="mb-5">
-                <h2 className="font-display font-bold text-xl text-foreground mb-1">Verify your number</h2>
-                <p className="text-sm text-muted-foreground">
-                  We sent a 6-digit code to <span className="font-medium text-foreground">{otpPhone}</span>
-                </p>
-              </div>
-              {devCode && (
-                <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
-                  <p className="text-xs text-amber-700 font-medium mb-1">Dev mode — your code:</p>
-                  <p className="text-2xl font-mono font-bold tracking-widest text-amber-800">{devCode}</p>
-                </div>
-              )}
-              <form onSubmit={handleRegister} className="space-y-4">
-                <Input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="\d{6}"
-                  maxLength={6}
-                  placeholder="000000"
-                  value={otp}
-                  onChange={(e) => handleOtpChange(e.target.value)}
-                  className="rounded-xl text-center text-2xl font-mono tracking-widest h-14"
-                  autoFocus
-                  disabled={isLoading}
-                />
-                <Button type="submit" className="w-full rounded-xl h-11" disabled={isLoading || otp.length !== 6}>
-                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ShieldCheck className="w-4 h-4 mr-2" />}
                   Create Account
                 </Button>
-                <button
-                  type="button"
-                  onClick={handleSignUpSendOtp}
-                  disabled={isLoading}
-                  className="w-full text-sm text-muted-foreground hover:text-primary transition-colors flex items-center justify-center gap-1.5 py-1"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" /> Resend code
-                </button>
               </form>
             </>
           )}

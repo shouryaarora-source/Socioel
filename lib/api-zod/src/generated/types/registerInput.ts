@@ -13,6 +13,9 @@ export interface RegisterInput {
   gender?: string;
   age?: number;
   profession?: string;
-  /** OTP code that was sent to the phone */
-  code: string;
+  /**
+     * Account password (min 6 characters)
+     * @minLength 6
+     */
+  password: string;
 }

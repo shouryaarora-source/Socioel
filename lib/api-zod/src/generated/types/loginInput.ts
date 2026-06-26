@@ -6,7 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface SendOtpInput {
+export interface LoginInput {
   /** Phone number or email address */
   identifier: string;
+  /** @minLength 1 */
+  password: string;
 }
