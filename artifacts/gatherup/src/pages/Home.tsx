@@ -1,17 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Navbar } from "@/components/Navbar";
 import { EventCard } from "@/components/EventCard";
 import { useListEvents, useGetFeaturedEvents, useListCategories } from "@workspace/api-client-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Compass, Loader2 } from "lucide-react";
+import { Search, Compass, Loader2, MapPin, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { useLocation } from "wouter";
 
 export default function Home() {
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>();
-  
+  const [nearCoords, setNearCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const cat = params.get("category");
@@ -22,9 +24,33 @@ export default function Home() {
   const { data: events, isLoading: loadingEvents } = useListEvents({
     search: search || undefined,
     category: selectedCategory,
-    upcoming: true
+    upcoming: nearCoords ? undefined : true,
+    nearLat: nearCoords?.lat,
+    nearLng: nearCoords?.lng,
   });
   const { data: categories } = useListCategories();
+
+  const handleNearMe = useCallback(() => {
+    if (nearCoords) {
+      setNearCoords(null);
+      setLocationError(null);
+      return;
+    }
+    setLocationLoading(true);
+    setLocationError(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setNearCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setLocationLoading(false);
+      },
+      (err) => {
+        setLocationError(err.code === 1 ? "Location access denied." : "Could not get location.");
+        setLocationLoading(false);
+      }
+    );
+  }, [nearCoords]);
+
+  const isNearActive = !!nearCoords;
 
   return (
     <div className="min-h-screen pb-20 md:pb-0">
@@ -41,15 +67,37 @@ export default function Home() {
               Discover local runs, hikes, and community meetups happening near you.
             </p>
             
-            <div className="relative max-w-lg mx-auto">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-5 h-5" />
-              <Input 
-                placeholder="Search events by name or location..." 
-                className="pl-10 h-12 rounded-full bg-card shadow-sm border-0 focus-visible:ring-primary"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
+            <div className="flex gap-2 max-w-lg mx-auto">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-5 h-5" />
+                <Input 
+                  placeholder="Search events by name or location..." 
+                  className="pl-10 h-12 rounded-full bg-card shadow-sm border-0 focus-visible:ring-primary"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+              <Button
+                variant={isNearActive ? "default" : "outline"}
+                className={`h-12 px-4 rounded-full shrink-0 gap-1.5 transition-all ${isNearActive ? "shadow-md" : "bg-card border-0 shadow-sm"}`}
+                onClick={handleNearMe}
+                disabled={locationLoading}
+                title={isNearActive ? "Clear nearby filter" : "Find events near me"}
+              >
+                {locationLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <MapPin className="w-4 h-4" />
+                )}
+                <span className="text-sm font-medium">
+                  {isNearActive ? "Near Me" : locationLoading ? "Locating…" : "Near Me"}
+                </span>
+                {isNearActive && <X className="w-3.5 h-3.5 ml-0.5 opacity-70" />}
+              </Button>
             </div>
+            {locationError && (
+              <p className="mt-2 text-sm text-destructive">{locationError}</p>
+            )}
           </div>
 
           <div className="flex gap-2 overflow-x-auto pb-4 pt-2 px-2 -mx-2 hide-scrollbar justify-center">
@@ -73,7 +121,7 @@ export default function Home() {
           </div>
         </section>
 
-        {!search && !selectedCategory && featuredEvents && featuredEvents.length > 0 && (
+        {!search && !selectedCategory && !isNearActive && featuredEvents && featuredEvents.length > 0 && (
           <section className="mb-16">
             <div className="flex items-center gap-2 mb-6">
               <Compass className="w-6 h-6 text-primary" />
@@ -90,11 +138,11 @@ export default function Home() {
         <section>
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-display font-bold">
-              {search ? 'Search Results' : selectedCategory ? `${selectedCategory} Events` : 'Upcoming Events'}
+              {isNearActive ? "Events Near You" : search ? "Search Results" : selectedCategory ? `${selectedCategory} Events` : "Upcoming Events"}
             </h2>
           </div>
           
-          {(loadingEvents || loadingFeatured) && (
+          {(loadingEvents || (!isNearActive && loadingFeatured)) && (
             <div className="py-20 flex justify-center">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
@@ -107,7 +155,9 @@ export default function Home() {
               </div>
               <h3 className="text-xl font-bold mb-2">No events found</h3>
               <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                We couldn't find any events matching your criteria. Why not start your own?
+                {isNearActive
+                  ? "No events found within 50 km of your location. Try creating one!"
+                  : "We couldn't find any events matching your criteria. Why not start your own?"}
               </p>
               <Button onClick={() => window.location.href = '/events/new'}>
                 Create an Event

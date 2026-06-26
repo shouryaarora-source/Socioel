@@ -16,4 +16,6 @@ export interface EventInput {
   hostId: number;
   maxAttendees: number;
   imageUrl?: string;
+  latitude?: number;
+  longitude?: number;
 }

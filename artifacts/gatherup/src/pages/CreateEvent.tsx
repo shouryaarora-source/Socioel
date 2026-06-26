@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -27,7 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
-import { Calendar, Clock, MapPin, Users, Compass, Type, AlignLeft, Image as ImageIcon } from "lucide-react";
+import { Calendar, Clock, MapPin, Users, Type, Image as ImageIcon, Loader2 } from "lucide-react";
 
 const CURRENT_USER_ID = 1;
 
@@ -36,11 +36,15 @@ const formSchema = z.object({
   description: z.string().min(20, "Description must be at least 20 characters").max(1000),
   category: z.string().min(1, "Please select a category"),
   location: z.string().min(5, "Location must be at least 5 characters"),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Please enter a valid date (YYYY-MM-DD)"),
   time: z.string().regex(/^\d{2}:\d{2}$/, "Please enter a valid time (HH:MM)"),
   maxAttendees: z.coerce.number().min(2, "Must allow at least 2 attendees").max(1000),
   imageUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
 });
+
+type FormValues = z.infer<typeof formSchema>;
 
 const CATEGORIES = [
   "Running",
@@ -52,18 +56,122 @@ const CATEGORIES = [
   "Social",
 ];
 
+interface NominatimResult {
+  place_id: number;
+  display_name: string;
+  lat: string;
+  lon: string;
+}
+
+function LocationAutocomplete({
+  value,
+  onChange,
+  onCoords,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  onCoords: (lat: number | undefined, lng: number | undefined) => void;
+}) {
+  const [suggestions, setSuggestions] = useState<NominatimResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  function handleInput(val: string) {
+    onChange(val);
+    onCoords(undefined, undefined);
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (val.trim().length < 3) {
+      setSuggestions([]);
+      setOpen(false);
+      return;
+    }
+
+    debounceRef.current = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&limit=5&addressdetails=0`;
+        const res = await fetch(url, { headers: { "Accept-Language": "en" } });
+        const data: NominatimResult[] = await res.json();
+        setSuggestions(data);
+        setOpen(data.length > 0);
+      } catch {
+        setSuggestions([]);
+        setOpen(false);
+      } finally {
+        setLoading(false);
+      }
+    }, 350);
+  }
+
+  function handleSelect(result: NominatimResult) {
+    onChange(result.display_name);
+    onCoords(parseFloat(result.lat), parseFloat(result.lon));
+    setSuggestions([]);
+    setOpen(false);
+  }
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10" />
+      {loading && (
+        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground animate-spin z-10" />
+      )}
+      <Input
+        placeholder="Start typing an address or place name…"
+        className="h-12 rounded-xl pl-10"
+        value={value}
+        onChange={(e) => handleInput(e.target.value)}
+        onFocus={() => suggestions.length > 0 && setOpen(true)}
+        autoComplete="off"
+      />
+      {open && suggestions.length > 0 && (
+        <div className="absolute z-50 w-full mt-1 bg-card border rounded-xl shadow-lg overflow-hidden">
+          {suggestions.map((s) => (
+            <button
+              key={s.place_id}
+              type="button"
+              className="w-full text-left px-4 py-3 text-sm hover:bg-muted transition-colors border-b last:border-b-0 flex items-start gap-2"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => handleSelect(s)}
+            >
+              <MapPin className="w-3.5 h-3.5 mt-0.5 shrink-0 text-primary/60" />
+              <span className="line-clamp-2">{s.display_name}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CreateEvent() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: "",
       description: "",
       category: "",
       location: "",
+      latitude: undefined,
+      longitude: undefined,
       date: new Date().toISOString().split('T')[0],
       time: "10:00",
       maxAttendees: 10,
@@ -91,13 +199,16 @@ export default function CreateEvent() {
     }
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    createEvent.mutate({
-      data: {
-        ...values,
-        hostId: CURRENT_USER_ID,
-      }
-    });
+  function onSubmit(values: FormValues) {
+    const payload: Parameters<typeof createEvent.mutate>[0]["data"] = {
+      ...values,
+      hostId: CURRENT_USER_ID,
+    };
+    if (values.latitude != null && values.longitude != null) {
+      payload.latitude = values.latitude;
+      payload.longitude = values.longitude;
+    }
+    createEvent.mutate({ data: payload });
   }
 
   return (
@@ -197,11 +308,18 @@ export default function CreateEvent() {
                     <FormItem>
                       <FormLabel>Location</FormLabel>
                       <FormControl>
-                        <div className="relative">
-                          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                          <Input placeholder="Park entrance, Cafe, etc." className="h-12 rounded-xl pl-10" {...field} />
-                        </div>
+                        <LocationAutocomplete
+                          value={field.value}
+                          onChange={field.onChange}
+                          onCoords={(lat, lng) => {
+                            form.setValue("latitude", lat);
+                            form.setValue("longitude", lng);
+                          }}
+                        />
                       </FormControl>
+                      <FormDescription>
+                        Select a suggestion to pin the exact coordinates for "Near Me" search.
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

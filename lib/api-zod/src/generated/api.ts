@@ -22,7 +22,10 @@ export const HealthCheckResponse = zod.object({
 export const ListEventsQueryParams = zod.object({
   "category": zod.coerce.string().optional(),
   "search": zod.coerce.string().optional(),
-  "upcoming": zod.coerce.boolean().optional()
+  "upcoming": zod.coerce.boolean().optional(),
+  "nearLat": zod.coerce.number().optional(),
+  "nearLng": zod.coerce.number().optional(),
+  "radiusKm": zod.coerce.number().optional()
 })
 
 export const ListEventsResponseItem = zod.object({
@@ -39,6 +42,9 @@ export const ListEventsResponseItem = zod.object({
   "attendeeCount": zod.number(),
   "maxAttendees": zod.number(),
   "imageUrl": zod.string().nullish(),
+  "latitude": zod.number().nullish(),
+  "longitude": zod.number().nullish(),
+  "distanceKm": zod.number().nullish(),
   "createdAt": zod.string()
 })
 export const ListEventsResponse = zod.array(ListEventsResponseItem)
@@ -56,7 +62,9 @@ export const CreateEventBody = zod.object({
   "time": zod.string(),
   "hostId": zod.number(),
   "maxAttendees": zod.number(),
-  "imageUrl": zod.string().optional()
+  "imageUrl": zod.string().optional(),
+  "latitude": zod.number().optional(),
+  "longitude": zod.number().optional()
 })
 
 export const CreateEventResponse = zod.object({
@@ -73,6 +81,9 @@ export const CreateEventResponse = zod.object({
   "attendeeCount": zod.number(),
   "maxAttendees": zod.number(),
   "imageUrl": zod.string().nullish(),
+  "latitude": zod.number().nullish(),
+  "longitude": zod.number().nullish(),
+  "distanceKm": zod.number().nullish(),
   "createdAt": zod.string()
 })
 
@@ -94,6 +105,9 @@ export const GetFeaturedEventsResponseItem = zod.object({
   "attendeeCount": zod.number(),
   "maxAttendees": zod.number(),
   "imageUrl": zod.string().nullish(),
+  "latitude": zod.number().nullish(),
+  "longitude": zod.number().nullish(),
+  "distanceKm": zod.number().nullish(),
   "createdAt": zod.string()
 })
 export const GetFeaturedEventsResponse = zod.array(GetFeaturedEventsResponseItem)
@@ -133,6 +147,9 @@ export const GetEventResponse = zod.object({
   "attendeeCount": zod.number(),
   "maxAttendees": zod.number(),
   "imageUrl": zod.string().nullish(),
+  "latitude": zod.number().nullish(),
+  "longitude": zod.number().nullish(),
+  "distanceKm": zod.number().nullish(),
   "createdAt": zod.string()
 })
 
@@ -169,6 +186,9 @@ export const UpdateEventResponse = zod.object({
   "attendeeCount": zod.number(),
   "maxAttendees": zod.number(),
   "imageUrl": zod.string().nullish(),
+  "latitude": zod.number().nullish(),
+  "longitude": zod.number().nullish(),
+  "distanceKm": zod.number().nullish(),
   "createdAt": zod.string()
 })
 
@@ -473,6 +493,9 @@ export const GetUserHostedEventsResponseItem = zod.object({
   "attendeeCount": zod.number(),
   "maxAttendees": zod.number(),
   "imageUrl": zod.string().nullish(),
+  "latitude": zod.number().nullish(),
+  "longitude": zod.number().nullish(),
+  "distanceKm": zod.number().nullish(),
   "createdAt": zod.string()
 })
 export const GetUserHostedEventsResponse = zod.array(GetUserHostedEventsResponseItem)
@@ -499,6 +522,9 @@ export const GetUserJoinedEventsResponseItem = zod.object({
   "attendeeCount": zod.number(),
   "maxAttendees": zod.number(),
   "imageUrl": zod.string().nullish(),
+  "latitude": zod.number().nullish(),
+  "longitude": zod.number().nullish(),
+  "distanceKm": zod.number().nullish(),
   "createdAt": zod.string()
 })
 export const GetUserJoinedEventsResponse = zod.array(GetUserJoinedEventsResponseItem)

@@ -2,7 +2,7 @@ import { Link } from "wouter";
 import { format } from "date-fns";
 import { MapPin, Users, Calendar, Clock } from "lucide-react";
 import { Event } from "@workspace/api-client-react";
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -15,6 +15,11 @@ const DEFAULT_IMAGES: Record<string, string> = {
   social: "/images/social.png",
   fitness: "/images/sports.png"
 };
+
+function formatDistance(km: number): string {
+  if (km < 1) return `${Math.round(km * 1000)} m away`;
+  return `${km.toFixed(1)} km away`;
+}
 
 export function EventCard({ event, featured = false }: { event: Event; featured?: boolean }) {
   const categoryImage = DEFAULT_IMAGES[event.category.toLowerCase()] || DEFAULT_IMAGES.social;
@@ -30,10 +35,15 @@ export function EventCard({ event, featured = false }: { event: Event; featured?
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-          <div className="absolute top-4 left-4">
+          <div className="absolute top-4 left-4 flex gap-2">
             <Badge className="bg-background/90 text-foreground backdrop-blur-md hover:bg-background border-0 shadow-sm font-semibold">
               {event.category}
             </Badge>
+            {event.distanceKm != null && (
+              <Badge className="bg-primary/90 text-primary-foreground backdrop-blur-md border-0 shadow-sm font-semibold">
+                {formatDistance(event.distanceKm)}
+              </Badge>
+            )}
           </div>
           <div className="absolute bottom-4 left-4 right-4 text-white">
             <h3 className={`font-display font-bold ${featured ? 'text-3xl' : 'text-xl'} mb-1 line-clamp-1`}>

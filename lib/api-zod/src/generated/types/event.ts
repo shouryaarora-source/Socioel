@@ -23,5 +23,11 @@ export interface Event {
   maxAttendees: number;
   /** @nullable */
   imageUrl?: string | null;
+  /** @nullable */
+  latitude?: number | null;
+  /** @nullable */
+  longitude?: number | null;
+  /** @nullable */
+  distanceKm?: number | null;
   createdAt: string;
 }

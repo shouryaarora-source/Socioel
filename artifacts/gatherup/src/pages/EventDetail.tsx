@@ -228,6 +228,13 @@ export default function EventDetail() {
                   <div className="flex items-center gap-2 bg-muted px-4 py-2 rounded-xl">
                     <MapPin className="w-5 h-5 text-secondary" />
                     <span>{event.location}</span>
+                    {event.distanceKm != null && (
+                      <span className="ml-1 text-xs font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                        {event.distanceKm < 1
+                          ? `${Math.round(event.distanceKm * 1000)} m away`
+                          : `${event.distanceKm.toFixed(1)} km away`}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

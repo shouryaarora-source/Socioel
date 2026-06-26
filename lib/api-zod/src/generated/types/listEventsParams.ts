@@ -10,4 +10,7 @@ export type ListEventsParams = {
 category?: string;
 search?: string;
 upcoming?: boolean;
+nearLat?: number;
+nearLng?: number;
+radiusKm?: number;
 };

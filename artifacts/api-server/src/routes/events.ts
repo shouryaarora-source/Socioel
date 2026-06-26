@@ -17,7 +17,20 @@ import {
 
 const router: IRouter = Router();
 
-async function buildEventResponse(event: typeof eventsTable.$inferSelect) {
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+async function buildEventResponse(event: typeof eventsTable.$inferSelect, distanceKm?: number | null) {
   const [host] = await db.select().from(usersTable).where(eq(usersTable.id, event.hostId));
   const [{ count }] = await db
     .select({ count: sql<number>`cast(count(*) as int)` })
@@ -32,6 +45,7 @@ async function buildEventResponse(event: typeof eventsTable.$inferSelect) {
     hostName: host?.name ?? null,
     hostAvatar: host?.avatarUrl ?? null,
     attendeeCount: count,
+    distanceKm: distanceKm ?? null,
   };
 }
 
@@ -63,7 +77,32 @@ router.get("/events", async (req, res): Promise<void> => {
   }
 
   const events = await query.orderBy(desc(eventsTable.createdAt));
-  const result = await Promise.all(events.map(buildEventResponse));
+
+  const { nearLat, nearLng, radiusKm = 50 } = params.data;
+
+  if (nearLat != null && nearLng != null) {
+    const withDistance = events.map((event) => {
+      if (event.latitude != null && event.longitude != null) {
+        return { event, distanceKm: haversineKm(nearLat, nearLng, event.latitude, event.longitude) };
+      }
+      return { event, distanceKm: null };
+    });
+
+    const filtered = withDistance.filter((e) => e.distanceKm == null || e.distanceKm <= radiusKm);
+
+    filtered.sort((a, b) => {
+      if (a.distanceKm == null && b.distanceKm == null) return 0;
+      if (a.distanceKm == null) return 1;
+      if (b.distanceKm == null) return -1;
+      return a.distanceKm - b.distanceKm;
+    });
+
+    const result = await Promise.all(filtered.map(({ event, distanceKm }) => buildEventResponse(event, distanceKm)));
+    res.json(result);
+    return;
+  }
+
+  const result = await Promise.all(events.map((e) => buildEventResponse(e)));
   res.json(result);
 });
 
@@ -71,6 +110,12 @@ router.post("/events", async (req, res): Promise<void> => {
   const parsed = CreateEventBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const { latitude, longitude } = parsed.data as { latitude?: number; longitude?: number };
+  if ((latitude != null) !== (longitude != null)) {
+    res.status(400).json({ error: "latitude and longitude must both be present or both absent" });
     return;
   }
 

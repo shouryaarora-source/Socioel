@@ -51,6 +51,18 @@ paths:
           in: query
           schema:
             type: boolean
+        - name: nearLat
+          in: query
+          schema:
+            type: number
+        - name: nearLng
+          in: query
+          schema:
+            type: number
+        - name: radiusKm
+          in: query
+          schema:
+            type: number
       responses:
         "200":
           description: List of events
@@ -562,6 +574,12 @@ components:
           type: integer
         imageUrl:
           type: ["string", "null"]
+        latitude:
+          type: ["number", "null"]
+        longitude:
+          type: ["number", "null"]
+        distanceKm:
+          type: ["number", "null"]
         createdAt:
           type: string
 
@@ -587,6 +605,10 @@ components:
           type: integer
         imageUrl:
           type: string
+        latitude:
+          type: number
+        longitude:
+          type: number
 
     EventUpdate:
       type: object

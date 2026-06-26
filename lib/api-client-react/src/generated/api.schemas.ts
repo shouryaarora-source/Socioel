@@ -26,6 +26,12 @@ export interface Event {
   maxAttendees: number;
   /** @nullable */
   imageUrl?: string | null;
+  /** @nullable */
+  latitude?: number | null;
+  /** @nullable */
+  longitude?: number | null;
+  /** @nullable */
+  distanceKm?: number | null;
   createdAt: string;
 }
 
@@ -39,6 +45,8 @@ export interface EventInput {
   hostId: number;
   maxAttendees: number;
   imageUrl?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface EventUpdate {
@@ -190,5 +198,8 @@ export type ListEventsParams = {
 category?: string;
 search?: string;
 upcoming?: boolean;
+nearLat?: number;
+nearLng?: number;
+radiusKm?: number;
 };
 
