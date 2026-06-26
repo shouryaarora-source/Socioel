@@ -44,6 +44,7 @@
     "@tailwindcss/typography": "^0.5.15",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-query": "catalog:",
+    "@types/leaflet": "^1.9.21",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
@@ -78,6 +79,8 @@
     "@uppy/aws-s3": "^5.1.0",
     "@uppy/core": "^5.2.0",
     "@uppy/dashboard": "^5.1.1",
-    "@uppy/react": "^5.2.0"
+    "@uppy/react": "^5.2.0",
+    "leaflet": "^1.9.4",
+    "react-leaflet": "^5.0.0"
   }
 }

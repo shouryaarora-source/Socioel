@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { Navbar } from "@/components/Navbar";
 import { EventCard } from "@/components/EventCard";
+import { EventMapView } from "@/components/EventMapView";
 import { useListEvents, useGetFeaturedEvents, useListCategories } from "@workspace/api-client-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Compass, Loader2, MapPin, X } from "lucide-react";
+import { Search, Compass, Loader2, MapPin, X, LayoutGrid, Map } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 export default function Home() {
@@ -13,6 +14,7 @@ export default function Home() {
   const [nearCoords, setNearCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"list" | "map">("list");
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -121,7 +123,7 @@ export default function Home() {
           </div>
         </section>
 
-        {!search && !selectedCategory && !isNearActive && featuredEvents && featuredEvents.length > 0 && (
+        {!search && !selectedCategory && !isNearActive && featuredEvents && featuredEvents.length > 0 && viewMode === "list" && (
           <section className="mb-16">
             <div className="flex items-center gap-2 mb-6">
               <Compass className="w-6 h-6 text-primary" />
@@ -140,6 +142,33 @@ export default function Home() {
             <h2 className="text-2xl font-display font-bold">
               {isNearActive ? "Events Near You" : search ? "Search Results" : selectedCategory ? `${selectedCategory} Events` : "Upcoming Events"}
             </h2>
+
+            <div className="flex items-center gap-1 bg-card rounded-full p-1 shadow-sm border border-border/40">
+              <button
+                onClick={() => setViewMode("list")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                  viewMode === "list"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                title="List view"
+              >
+                <LayoutGrid className="w-4 h-4" />
+                <span className="hidden sm:inline">List</span>
+              </button>
+              <button
+                onClick={() => setViewMode("map")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                  viewMode === "map"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                title="Map view"
+              >
+                <Map className="w-4 h-4" />
+                <span className="hidden sm:inline">Map</span>
+              </button>
+            </div>
           </div>
           
           {(loadingEvents || (!isNearActive && loadingFeatured)) && (
@@ -165,12 +194,16 @@ export default function Home() {
             </div>
           )}
 
-          {!loadingEvents && events && events.length > 0 && (
+          {!loadingEvents && events && events.length > 0 && viewMode === "list" && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {events.map((event) => (
                 <EventCard key={event.id} event={event} />
               ))}
             </div>
+          )}
+
+          {!loadingEvents && events && events.length > 0 && viewMode === "map" && (
+            <EventMapView events={events} userCoords={nearCoords} />
           )}
         </section>
       </main>
