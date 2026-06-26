@@ -1,11 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { Navbar } from "@/components/Navbar";
 import { EventCard } from "@/components/EventCard";
-import { EventMapView } from "@/components/EventMapView";
 import { useListEvents, useGetFeaturedEvents, useListCategories } from "@workspace/api-client-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Compass, Loader2, MapPin, X, Map } from "lucide-react";
+import { Search, Compass, Loader2, MapPin, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 export default function Home() {
@@ -52,16 +51,13 @@ export default function Home() {
   }, [nearCoords]);
 
   const isNearActive = !!nearCoords;
-  const eventsWithCoords = (events ?? []).filter(
-    (e) => e.latitude != null && e.longitude != null
-  );
 
   return (
     <div className="min-h-screen pb-20">
       <Navbar />
 
       <main className="container mx-auto px-4 py-8">
-        {/* ── Hero ── */}
+        {/* Hero */}
         <section className="mb-10">
           <div className="max-w-2xl mx-auto text-center mb-8">
             <h1 className="text-4xl md:text-5xl font-display font-extrabold mb-4 tracking-tight text-foreground">
@@ -87,7 +83,6 @@ export default function Home() {
                 className={`h-12 px-4 rounded-full shrink-0 gap-1.5 transition-all ${isNearActive ? "shadow-md" : "bg-card border-0 shadow-sm"}`}
                 onClick={handleNearMe}
                 disabled={locationLoading}
-                title={isNearActive ? "Clear nearby filter" : "Find events near me"}
               >
                 {locationLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -127,36 +122,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ── Map section ── always visible */}
-        <section className="mb-14">
-          <div className="flex items-center gap-2 mb-4">
-            <Map className="w-5 h-5 text-primary" />
-            <h2 className="text-xl font-display font-bold">
-              {isNearActive ? "Events Near You" : "Events on the Map"}
-            </h2>
-            {eventsWithCoords.length > 0 && (
-              <span className="text-sm text-muted-foreground">
-                — {eventsWithCoords.length} pinned
-              </span>
-            )}
-          </div>
-
-          {loadingEvents ? (
-            <div className="rounded-3xl border bg-card flex items-center justify-center" style={{ height: 420 }}>
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div>
-          ) : eventsWithCoords.length === 0 ? (
-            <div className="rounded-3xl border bg-card flex flex-col items-center justify-center gap-3 text-muted-foreground" style={{ height: 280 }}>
-              <MapPin className="w-10 h-10 opacity-30" />
-              <p className="text-sm">No events with map pins yet.</p>
-              <p className="text-xs opacity-70">Events added with a location will appear here.</p>
-            </div>
-          ) : (
-            <EventMapView events={events ?? []} userCoords={nearCoords} />
-          )}
-        </section>
-
-        {/* ── Featured events ── */}
+        {/* Featured events */}
         {!search && !selectedCategory && !isNearActive && featuredEvents && featuredEvents.length > 0 && (
           <section className="mb-14">
             <div className="flex items-center gap-2 mb-6">
@@ -171,7 +137,7 @@ export default function Home() {
           </section>
         )}
 
-        {/* ── All / filtered events list ── */}
+        {/* Events list */}
         <section>
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-display font-bold">

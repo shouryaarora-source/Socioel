@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Plus, Compass, Grid, User, LogIn, LogOut } from "lucide-react";
+import { Plus, Compass, Grid, User, LogIn, LogOut, Map } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -10,10 +11,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { MapModal } from "@/components/MapModal";
 
 export function Navbar() {
   const [location, setLocation] = useLocation();
   const { user, isLoading, logout } = useAuth();
+  const [mapOpen, setMapOpen] = useState(false);
 
   async function handleLogout() {
     await logout();
@@ -115,7 +118,7 @@ export function Navbar() {
             );
           })}
 
-          {/* Profile icon in bottom nav */}
+          {/* Profile icon */}
           <Link
             href={profilePath}
             className={`flex flex-col items-center gap-0.5 px-5 py-2 rounded-2xl transition-colors ${
@@ -130,13 +133,28 @@ export function Navbar() {
         </div>
       </nav>
 
-      {/* Floating Action Button — Create Event */}
-      <Link href="/events/new">
-        <button className="fixed bottom-20 right-5 z-50 flex items-center gap-2 bg-primary text-primary-foreground pl-4 pr-5 py-3.5 rounded-full shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-150 font-semibold text-sm">
-          <Plus className="w-5 h-5" />
-          Create Event
+      {/* Floating buttons — stacked bottom-right */}
+      <div className="fixed bottom-20 right-5 z-50 flex flex-col items-end gap-3">
+        {/* Map FAB */}
+        <button
+          onClick={() => setMapOpen(true)}
+          className="w-12 h-12 flex items-center justify-center bg-card border border-border text-foreground rounded-full shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-150"
+          aria-label="Open map"
+        >
+          <Map className="w-5 h-5" />
         </button>
-      </Link>
+
+        {/* Create Event FAB */}
+        <Link href="/events/new">
+          <button className="flex items-center gap-2 bg-primary text-primary-foreground pl-4 pr-5 py-3.5 rounded-full shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-150 font-semibold text-sm">
+            <Plus className="w-5 h-5" />
+            Create Event
+          </button>
+        </Link>
+      </div>
+
+      {/* Map modal overlay */}
+      {mapOpen && <MapModal onClose={() => setMapOpen(false)} />}
 
       {/* Spacer so content isn't hidden behind the bottom nav */}
       <div className="h-[64px]" />

@@ -62,9 +62,10 @@ function RecenterMap({ center }: { center: [number, number] | null }) {
 interface EventMapViewProps {
   events: Event[];
   userCoords: { lat: number; lng: number } | null;
+  fullHeight?: boolean;
 }
 
-export function EventMapView({ events, userCoords }: EventMapViewProps) {
+export function EventMapView({ events, userCoords, fullHeight }: EventMapViewProps) {
   const eventsWithCoords = events.filter(
     (e) => e.latitude != null && e.longitude != null
   );
@@ -84,7 +85,10 @@ export function EventMapView({ events, userCoords }: EventMapViewProps) {
   });
 
   return (
-    <div className="rounded-3xl overflow-hidden border border-border/50 shadow-md" style={{ height: "520px" }}>
+    <div
+      className={fullHeight ? "h-full w-full overflow-hidden" : "rounded-3xl overflow-hidden border border-border/50 shadow-md"}
+      style={fullHeight ? {} : { height: "520px" }}
+    >
       <MapContainer
         center={defaultCenter}
         zoom={userCoords ? 13 : 11}
