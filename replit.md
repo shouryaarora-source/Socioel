@@ -32,6 +32,7 @@ _Replace the heading above with the project's name, and this line with one sente
 - **Auth is password-based.** Sign In takes an identifier (phone OR email) + password; Sign Up takes name/phone/password (+ optional email, gender, age, profession). Passwords hashed with Node's built-in `crypto.scrypt` (format `hash.salt`) — no external hashing dep.
 - Sessions stored in Postgres via `connect-pg-simple` (table `user_sessions`). The session table is created explicitly at startup (`ensureSessionTable()` in `index.ts`); `createTableIfMissing` is intentionally `false` (see Gotchas).
 - Session is regenerated on login/register (anti session-fixation) before assigning `userId`.
+- **Cookie persistence behind the proxy:** the API sets `app.set("trust proxy", 1)` and the session cookie is `secure: true, sameSite: "none", httpOnly: true` (not env-conditional) so it survives in both the dev preview and production — both are HTTPS via the Replit proxy and load the app in a cross-site iframe. Because `sameSite: "none"` drops SameSite's CSRF protection, CORS is locked to an allowlist (`REPLIT_DEV_DOMAIN` + `REPLIT_DOMAINS`) and state-changing requests are rejected when their `Origin` is present but not allowlisted (see `app.ts`). `logout` clears the cookie with matching attributes.
 - `passwordHash` must never leave the server: every user-serializing route strips it (`auth.ts`, `users.ts` `serializeUser`, `events.ts` attendees). The OpenAPI `User` schema does not include it.
 
 ## Product

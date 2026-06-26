@@ -7,6 +7,37 @@ import sessionMiddleware from "./lib/session";
 
 const app: Express = express();
 
+// The app runs behind Replit's HTTPS proxy. Trust the first proxy hop so
+// `req.secure` reflects the X-Forwarded-Proto header; without this,
+// express-session refuses to set `secure` cookies (it sees the internal
+// localhost hop as plain HTTP).
+app.set("trust proxy", 1);
+
+/**
+ * Origins allowed to make credentialed (cookie-bearing) requests.
+ *
+ * The frontend and API are served same-origin through the Replit proxy
+ * (path-based routing), so in normal operation no cross-origin access is
+ * needed. We still build an explicit allowlist from the Replit domains so
+ * that credentialed CORS is never reflected back to an arbitrary origin —
+ * important because the session cookie is `SameSite=None`.
+ */
+function getAllowedOrigins(): Set<string> {
+  const origins = new Set<string>();
+  const devDomain = process.env["REPLIT_DEV_DOMAIN"];
+  if (devDomain) origins.add(`https://${devDomain}`);
+  const domains = process.env["REPLIT_DOMAINS"];
+  if (domains) {
+    for (const d of domains.split(",")) {
+      const trimmed = d.trim();
+      if (trimmed) origins.add(`https://${trimmed}`);
+    }
+  }
+  return origins;
+}
+
+const allowedOrigins = getAllowedOrigins();
+
 app.use(
   pinoHttp({
     logger,
@@ -26,7 +57,43 @@ app.use(
     },
   }),
 );
-app.use(cors({ origin: true, credentials: true }));
+
+// Only reflect CORS credentials back to known Replit origins. Requests with no
+// Origin header (same-origin browser requests, curl, server-to-server) are
+// allowed; cross-origin requests from unknown sites get no CORS headers and are
+// blocked by the browser.
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.has(origin)) {
+        callback(null, true);
+      } else {
+        callback(null, false);
+      }
+    },
+    credentials: true,
+  }),
+);
+
+// CSRF defense for cookie-session auth. Because the session cookie is
+// `SameSite=None`, browsers will attach it to cross-site requests, so SameSite
+// no longer blocks CSRF on its own. Reject state-changing requests whose Origin
+// is present but not in the allowlist. Same-origin requests carry an allowed
+// Origin; non-browser clients (no Origin) are unaffected.
+const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+app.use((req, res, next) => {
+  if (SAFE_METHODS.has(req.method)) {
+    next();
+    return;
+  }
+  const origin = req.get("origin");
+  if (origin && !allowedOrigins.has(origin)) {
+    res.status(403).json({ error: "Cross-origin request blocked" });
+    return;
+  }
+  next();
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(sessionMiddleware);

@@ -44,10 +44,14 @@ const sessionMiddleware = session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env["NODE_ENV"] === "production",
+    // Served over HTTPS through the Replit proxy in both dev preview and
+    // production. `secure` + `sameSite: "none"` is required for the cookie to
+    // be sent inside the embedded preview/webview, which loads the app in a
+    // cross-site iframe. Requires `app.set("trust proxy", 1)` (see app.ts).
+    secure: true,
     httpOnly: true,
     maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-    sameSite: process.env["NODE_ENV"] === "production" ? "strict" : "lax",
+    sameSite: "none",
   },
 });
 

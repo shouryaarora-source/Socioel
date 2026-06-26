@@ -175,7 +175,12 @@ router.post("/auth/logout", async (req, res): Promise<void> => {
       res.status(500).json({ error: "Logout failed" });
       return;
     }
-    res.clearCookie("connect.sid");
+    res.clearCookie("connect.sid", {
+      path: "/",
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+    });
     res.json({ success: true });
   });
 });
