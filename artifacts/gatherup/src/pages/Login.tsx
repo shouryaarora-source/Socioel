@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Loader2, Phone, Mail, User, Lock, Eye, EyeOff,
-  ChevronDown, ChevronUp,
+  ChevronDown, ChevronUp, X,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -36,6 +36,36 @@ export default function Login() {
   const { login } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+
+  // ─── Navigation / gestures ───────────────────────────────────────────────────
+
+  function goBack() {
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      setLocation("/");
+    }
+  }
+
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+
+  function onTouchStart(e: React.TouchEvent) {
+    const t = e.touches[0];
+    if (t) touchStart.current = { x: t.clientX, y: t.clientY };
+  }
+
+  function onTouchEnd(e: React.TouchEvent) {
+    const start = touchStart.current;
+    const t = e.changedTouches[0];
+    touchStart.current = null;
+    if (!start || !t) return;
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    // Leftward swipe: significant horizontal travel, mostly horizontal
+    if (dx < -70 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      goBack();
+    }
+  }
 
   // ─── Sign In ────────────────────────────────────────────────────────────────
 
@@ -119,7 +149,21 @@ export default function Login() {
   // ─── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+    <div
+      className="relative min-h-screen bg-background flex flex-col items-center justify-center p-4"
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+    >
+      {/* Close / go back */}
+      <button
+        type="button"
+        onClick={goBack}
+        aria-label="Close"
+        className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground bg-muted/60 hover:bg-muted hover:text-foreground transition-colors"
+      >
+        <X className="w-5 h-5" />
+      </button>
+
       <div className="w-full max-w-sm">
 
         {/* Logo */}
