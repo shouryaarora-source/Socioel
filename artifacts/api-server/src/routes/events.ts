@@ -1,0 +1,260 @@
+import { Router, type IRouter } from "express";
+import { eq, and, sql, desc, ilike, or } from "drizzle-orm";
+import { db, eventsTable, usersTable, attendancesTable } from "@workspace/db";
+import {
+  ListEventsQueryParams,
+  CreateEventBody,
+  GetEventParams,
+  UpdateEventParams,
+  UpdateEventBody,
+  DeleteEventParams,
+  JoinEventParams,
+  JoinEventBody,
+  LeaveEventParams,
+  LeaveEventBody,
+  GetEventAttendeesParams,
+} from "@workspace/api-zod";
+
+const router: IRouter = Router();
+
+async function buildEventResponse(event: typeof eventsTable.$inferSelect) {
+  const [host] = await db.select().from(usersTable).where(eq(usersTable.id, event.hostId));
+  const [{ count }] = await db
+    .select({ count: sql<number>`cast(count(*) as int)` })
+    .from(attendancesTable)
+    .where(eq(attendancesTable.eventId, event.id));
+
+  return {
+    ...event,
+    date: event.date,
+    time: event.time,
+    createdAt: event.createdAt.toISOString(),
+    hostName: host?.name ?? null,
+    hostAvatar: host?.avatarUrl ?? null,
+    attendeeCount: count,
+  };
+}
+
+router.get("/events", async (req, res): Promise<void> => {
+  const params = ListEventsQueryParams.safeParse(req.query);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  let query = db.select().from(eventsTable).$dynamic();
+
+  const conditions = [];
+  if (params.data.category) {
+    conditions.push(eq(eventsTable.category, params.data.category));
+  }
+  if (params.data.search) {
+    conditions.push(
+      or(
+        ilike(eventsTable.title, `%${params.data.search}%`),
+        ilike(eventsTable.description, `%${params.data.search}%`),
+        ilike(eventsTable.location, `%${params.data.search}%`)
+      )
+    );
+  }
+
+  if (conditions.length > 0) {
+    query = query.where(and(...conditions));
+  }
+
+  const events = await query.orderBy(desc(eventsTable.createdAt));
+  const result = await Promise.all(events.map(buildEventResponse));
+  res.json(result);
+});
+
+router.post("/events", async (req, res): Promise<void> => {
+  const parsed = CreateEventBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const [event] = await db.insert(eventsTable).values(parsed.data).returning();
+  const result = await buildEventResponse(event);
+  res.status(201).json(result);
+});
+
+router.get("/events/featured", async (_req, res): Promise<void> => {
+  const subq = db
+    .select({ eventId: attendancesTable.eventId, count: sql<number>`cast(count(*) as int)`.as("count") })
+    .from(attendancesTable)
+    .groupBy(attendancesTable.eventId)
+    .as("att_counts");
+
+  const events = await db
+    .select({ event: eventsTable })
+    .from(eventsTable)
+    .leftJoin(subq, eq(eventsTable.id, subq.eventId))
+    .orderBy(desc(sql`coalesce(${subq.count}, 0)`), desc(eventsTable.createdAt))
+    .limit(6);
+
+  const result = await Promise.all(events.map(({ event }) => buildEventResponse(event)));
+  res.json(result);
+});
+
+router.get("/events/stats", async (_req, res): Promise<void> => {
+  const [{ totalEvents }] = await db
+    .select({ totalEvents: sql<number>`cast(count(*) as int)` })
+    .from(eventsTable);
+
+  const [{ totalAttendees }] = await db
+    .select({ totalAttendees: sql<number>`cast(count(*) as int)` })
+    .from(attendancesTable);
+
+  const categoryCounts = await db
+    .select({
+      category: eventsTable.category,
+      count: sql<number>`cast(count(*) as int)`,
+    })
+    .from(eventsTable)
+    .groupBy(eventsTable.category)
+    .orderBy(desc(sql`count(*)`));
+
+  res.json({ totalEvents, totalAttendees, categoryCounts });
+});
+
+router.get("/events/:id", async (req, res): Promise<void> => {
+  const params = GetEventParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const [event] = await db.select().from(eventsTable).where(eq(eventsTable.id, params.data.id));
+  if (!event) {
+    res.status(404).json({ error: "Event not found" });
+    return;
+  }
+
+  const result = await buildEventResponse(event);
+  res.json(result);
+});
+
+router.patch("/events/:id", async (req, res): Promise<void> => {
+  const params = UpdateEventParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const parsed = UpdateEventBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const [event] = await db
+    .update(eventsTable)
+    .set(parsed.data)
+    .where(eq(eventsTable.id, params.data.id))
+    .returning();
+
+  if (!event) {
+    res.status(404).json({ error: "Event not found" });
+    return;
+  }
+
+  const result = await buildEventResponse(event);
+  res.json(result);
+});
+
+router.delete("/events/:id", async (req, res): Promise<void> => {
+  const params = DeleteEventParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const [event] = await db
+    .delete(eventsTable)
+    .where(eq(eventsTable.id, params.data.id))
+    .returning();
+
+  if (!event) {
+    res.status(404).json({ error: "Event not found" });
+    return;
+  }
+
+  res.sendStatus(204);
+});
+
+router.post("/events/:id/join", async (req, res): Promise<void> => {
+  const params = JoinEventParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const parsed = JoinEventBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const [existing] = await db
+    .select()
+    .from(attendancesTable)
+    .where(and(eq(attendancesTable.eventId, params.data.id), eq(attendancesTable.userId, parsed.data.userId)));
+
+  if (existing) {
+    res.status(400).json({ error: "Already joined this event" });
+    return;
+  }
+
+  const [attendance] = await db
+    .insert(attendancesTable)
+    .values({ eventId: params.data.id, userId: parsed.data.userId })
+    .returning();
+
+  res.status(201).json({ ...attendance, joinedAt: attendance.joinedAt.toISOString() });
+});
+
+router.delete("/events/:id/leave", async (req, res): Promise<void> => {
+  const params = LeaveEventParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const parsed = LeaveEventBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  await db
+    .delete(attendancesTable)
+    .where(and(eq(attendancesTable.eventId, params.data.id), eq(attendancesTable.userId, parsed.data.userId)));
+
+  res.sendStatus(204);
+});
+
+router.get("/events/:id/attendees", async (req, res): Promise<void> => {
+  const params = GetEventAttendeesParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const attendees = await db
+    .select({ user: usersTable })
+    .from(attendancesTable)
+    .innerJoin(usersTable, eq(attendancesTable.userId, usersTable.id))
+    .where(eq(attendancesTable.eventId, params.data.id));
+
+  const result = attendees.map(({ user }) => ({
+    ...user,
+    createdAt: user.createdAt.toISOString(),
+    eventsHosted: null,
+    eventsJoined: null,
+  }));
+
+  res.json(result);
+});
+
+export default router;

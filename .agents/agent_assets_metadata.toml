@@ -1,0 +1,38 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "rR1FXYUFj9Jlq9wF7KmdN"
+uri = "file://artifacts/gatherup/public/images/running.png"
+type = "image"
+title = "running event cover"
+
+[[generated]]
+id = "SOMKMek6ojWI3zJkcvCCU"
+uri = "file://artifacts/gatherup/public/images/hiking.png"
+type = "image"
+title = "hiking event cover"
+
+[[generated]]
+id = "Tk2z2ZqmujQmt_lnbJQlw"
+uri = "file://artifacts/gatherup/public/images/cycling.png"
+type = "image"
+title = "cycling event cover"
+
+[[generated]]
+id = "3OqJMIWGi12DhQCC0L1s4"
+uri = "file://artifacts/gatherup/public/images/sports.png"
+type = "image"
+title = "sports event cover"
+
+[[generated]]
+id = "GxNeIkkwN56ILwZl6PleG"
+uri = "file://artifacts/gatherup/public/images/yoga.png"
+type = "image"
+title = "yoga event cover"
+
+[[generated]]
+id = "DoDQ_-UyYAEuxM3HxmzCl"
+uri = "file://artifacts/gatherup/public/images/social.png"
+type = "image"
+title = "social event cover"
