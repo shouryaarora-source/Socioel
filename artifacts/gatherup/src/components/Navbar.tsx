@@ -1,6 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { Plus, Compass, Grid, User, LogIn, LogOut } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -28,9 +29,9 @@ export function Navbar() {
 
   return (
     <>
-      {/* Top bar — logo only */}
+      {/* Top bar — logo + sign in / avatar */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-lg">
-        <div className="container mx-auto px-4 h-14 flex items-center">
+        <div className="container mx-auto px-4 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-display font-bold text-xl">
               S
@@ -39,6 +40,54 @@ export function Navbar() {
               Socioel
             </span>
           </Link>
+
+          {!isLoading && (
+            user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
+                    <Avatar className="w-9 h-9 border-2 border-primary/20 hover:border-primary/60 transition-colors">
+                      <AvatarImage src={user.avatarUrl || ""} className="object-cover" />
+                      <AvatarFallback className="bg-primary text-primary-foreground font-display font-bold text-sm">
+                        {user.name?.charAt(0)?.toUpperCase() || "?"}
+                      </AvatarFallback>
+                    </Avatar>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48 rounded-2xl">
+                  <div className="px-3 py-2">
+                    <p className="text-sm font-semibold text-foreground truncate">{user.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">{user.phone}</p>
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild className="cursor-pointer rounded-xl">
+                    <Link href={profilePath}>
+                      <User className="w-4 h-4 mr-2" />
+                      My Profile
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={handleLogout}
+                    className="cursor-pointer text-destructive focus:text-destructive rounded-xl"
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button
+                size="sm"
+                variant="outline"
+                className="rounded-full"
+                onClick={() => setLocation("/login")}
+              >
+                <LogIn className="w-4 h-4 mr-1.5" />
+                Sign In
+              </Button>
+            )
+          )}
         </div>
       </header>
 
@@ -66,53 +115,18 @@ export function Navbar() {
             );
           })}
 
-          {/* Profile / Sign In */}
-          {!isLoading && (
-            user ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="flex flex-col items-center gap-0.5 px-5 py-2 rounded-2xl transition-colors text-muted-foreground hover:text-foreground focus:outline-none">
-                    <Avatar className="w-5 h-5 border border-primary/30">
-                      <AvatarImage src={user.avatarUrl || ""} className="object-cover" />
-                      <AvatarFallback className="bg-primary text-primary-foreground font-bold text-[10px]">
-                        {user.name?.charAt(0)?.toUpperCase() || "?"}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="text-[11px] font-medium">Profile</span>
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" side="top" className="w-48 rounded-2xl mb-2">
-                  <div className="px-3 py-2">
-                    <p className="text-sm font-semibold text-foreground truncate">{user.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{user.phone}</p>
-                  </div>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild className="cursor-pointer rounded-xl">
-                    <Link href={profilePath}>
-                      <User className="w-4 h-4 mr-2" />
-                      My Profile
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={handleLogout}
-                    className="cursor-pointer text-destructive focus:text-destructive rounded-xl"
-                  >
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Sign Out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <button
-                onClick={() => setLocation("/login")}
-                className="flex flex-col items-center gap-0.5 px-5 py-2 rounded-2xl transition-colors text-muted-foreground hover:text-foreground"
-              >
-                <LogIn className="w-5 h-5" />
-                <span className="text-[11px] font-medium">Sign In</span>
-              </button>
-            )
-          )}
+          {/* Profile icon in bottom nav */}
+          <Link
+            href={profilePath}
+            className={`flex flex-col items-center gap-0.5 px-5 py-2 rounded-2xl transition-colors ${
+              location.startsWith("/profile") || location === "/login"
+                ? "text-primary bg-primary/8"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <User className="w-5 h-5" />
+            <span className="text-[11px] font-medium">Profile</span>
+          </Link>
         </div>
       </nav>
 
