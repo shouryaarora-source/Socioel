@@ -8,6 +8,7 @@
 
 export * from './attendance';
 export * from './attendanceInput';
+export * from './authResponse';
 export * from './category';
 export * from './comment';
 export * from './commentInput';
@@ -18,9 +19,12 @@ export * from './eventStatsCategoryCountsItem';
 export * from './eventUpdate';
 export * from './healthStatus';
 export * from './listEventsParams';
+export * from './otpSendResult';
+export * from './sendOtpInput';
 export * from './uploadUrlRequest';
 export * from './uploadUrlResponse';
 export * from './user';
 export * from './userInput';
 export * from './userUpdate';
+export * from './verifyOtpInput';
 export * from './verifyUserInput';

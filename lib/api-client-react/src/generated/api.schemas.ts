@@ -165,6 +165,27 @@ export interface CommentInput {
   body: string;
 }
 
+export interface SendOtpInput {
+  phone: string;
+}
+
+export interface OtpSendResult {
+  success: boolean;
+  message: string;
+  /** @nullable */
+  devCode?: string | null;
+}
+
+export interface VerifyOtpInput {
+  phone: string;
+  code: string;
+}
+
+export interface AuthResponse {
+  success: boolean;
+  user: User;
+}
+
 export type ListEventsParams = {
 category?: string;
 search?: string;

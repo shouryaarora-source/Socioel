@@ -14,6 +14,7 @@ export const usersTable = pgTable("users", {
   phone: text("phone"),
   website: text("website"),
   instagram: text("instagram"),
+  phoneVerified: boolean("phone_verified").default(false).notNull(),
   verified: boolean("verified").default(false).notNull(),
   verifiedAt: timestamp("verified_at"),
   verificationSelfieUrl: text("verification_selfie_url"),

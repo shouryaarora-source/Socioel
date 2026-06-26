@@ -246,6 +246,82 @@ export const GetEventAttendeesResponse = zod.array(GetEventAttendeesResponseItem
 
 
 /**
+ * @summary Send OTP to phone number
+ */
+export const SendOtpBody = zod.object({
+  "phone": zod.string()
+})
+
+export const SendOtpResponse = zod.object({
+  "success": zod.boolean(),
+  "message": zod.string(),
+  "devCode": zod.string().nullish()
+})
+
+
+/**
+ * @summary Verify OTP and log in
+ */
+export const VerifyOtpBody = zod.object({
+  "phone": zod.string(),
+  "code": zod.string()
+})
+
+export const VerifyOtpResponse = zod.object({
+  "success": zod.boolean(),
+  "user": zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "bio": zod.string().nullish(),
+  "avatarUrl": zod.string().nullish(),
+  "profession": zod.string().nullish(),
+  "age": zod.number().nullish(),
+  "city": zod.string().nullish(),
+  "interests": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "website": zod.string().nullish(),
+  "instagram": zod.string().nullish(),
+  "verified": zod.boolean(),
+  "verifiedAt": zod.string().nullish(),
+  "verificationSelfieUrl": zod.string().nullish(),
+  "eventsHosted": zod.number().nullish(),
+  "eventsJoined": zod.number().nullish(),
+  "createdAt": zod.string()
+})
+})
+
+
+/**
+ * @summary Get current logged-in user
+ */
+export const GetMeResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "bio": zod.string().nullish(),
+  "avatarUrl": zod.string().nullish(),
+  "profession": zod.string().nullish(),
+  "age": zod.number().nullish(),
+  "city": zod.string().nullish(),
+  "interests": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "website": zod.string().nullish(),
+  "instagram": zod.string().nullish(),
+  "verified": zod.boolean(),
+  "verifiedAt": zod.string().nullish(),
+  "verificationSelfieUrl": zod.string().nullish(),
+  "eventsHosted": zod.number().nullish(),
+  "eventsJoined": zod.number().nullish(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Log out current user
+ */
+export const LogoutResponse = zod.unknown()
+
+
+/**
  * @summary Create or register a user
  */
 export const CreateUserBody = zod.object({
