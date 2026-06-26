@@ -1,5 +1,4 @@
 # Memory Index
 
-- [Session store + esbuild bundling](session-store-bundling.md) — connect-pg-simple `createTableIfMissing` fails in prod; create the session table yourself.
-- [Drizzle push in this repo](drizzle-push-tty.md) — destructive `push` needs a TTY; use the `push-force` script in CI/agent runs.
-- [Session cookies behind Replit's HTTPS proxy](session-cookies-behind-proxy.md) — login won't persist without `trust proxy` + `secure` + `sameSite:none`; then lock CORS to an allowlist + add a CSRF origin check.
+- [Testing auth behind Secure cookies](secure-cookie-auth-testing.md) — `curl localhost:80` drops Secure session cookies; smoke-test auth via `https://$REPLIT_DEV_DOMAIN`.
+- [Generating server keys without leaking them](generate-secrets-in-sandbox.md) — make VAPID/keypairs inside code_execution + `setEnvVars`, never print the value.

@@ -21,3 +21,10 @@ timeoutMs = 20000
 
 [nix]
 channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+VAPID_PUBLIC_KEY = "BBPAMx08Nw-_CwpiO1WSJNqn5n9MtJ88yRWMV9_XNgNP1PURY4WOyo2ZnCDmQizifUF9JCDyx23lGLmr2xCb9LE"
+VAPID_PRIVATE_KEY = "pVNS_VZbw2LXH1179ak9oDQNzXwQb1W8OUcBrojvPV8"
+VAPID_SUBJECT = "mailto:notifications@socioel.app"

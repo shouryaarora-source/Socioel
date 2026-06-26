@@ -17,6 +17,8 @@ import {
   ApproveJoinRequestParams,
   RejectJoinRequestParams,
 } from "@workspace/api-zod";
+import { requireUserId } from "../lib/auth";
+import { createNotification } from "../lib/notifications";
 
 const router: IRouter = Router();
 
@@ -166,6 +168,72 @@ router.get("/events/stats", async (_req, res): Promise<void> => {
   res.json({ totalEvents, totalAttendees, categoryCounts });
 });
 
+router.get("/events/suggested", async (req, res): Promise<void> => {
+  const userId = requireUserId(req, res);
+  if (userId == null) return;
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+  if (!user) {
+    res.status(401).json({ error: "Not authenticated" });
+    return;
+  }
+
+  const myAttendances = await db
+    .select({ eventId: attendancesTable.eventId })
+    .from(attendancesTable)
+    .where(eq(attendancesTable.userId, userId));
+  const attendedEventIds = new Set(myAttendances.map((a) => a.eventId));
+
+  const allEvents = await db.select().from(eventsTable).orderBy(desc(eventsTable.createdAt));
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const isUpcoming = (dateStr: string): boolean => {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return true;
+    return d.getTime() >= today.getTime();
+  };
+
+  const interestTokens = (user.interests ?? "")
+    .split(",")
+    .map((t) => t.trim().toLowerCase())
+    .filter(Boolean);
+  const cityLower = (user.city ?? "").trim().toLowerCase();
+
+  const preferredCategories = new Set<string>();
+  for (const ev of allEvents) {
+    if (ev.hostId === userId || attendedEventIds.has(ev.id)) {
+      preferredCategories.add(ev.category.toLowerCase());
+    }
+  }
+
+  const candidates = allEvents.filter(
+    (ev) => ev.hostId !== userId && !attendedEventIds.has(ev.id) && isUpcoming(ev.date),
+  );
+
+  const scored = candidates.map((ev) => {
+    let score = 0;
+    const cat = ev.category.toLowerCase();
+    if (preferredCategories.has(cat)) score += 2;
+    if (interestTokens.some((t) => t === cat || cat.includes(t) || t.includes(cat))) score += 1;
+    if (cityLower && ev.location.toLowerCase().includes(cityLower)) score += 1;
+    return { ev, score };
+  });
+
+  const hasSignal = scored.some((s) => s.score > 0);
+  scored.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    const timeA = new Date(a.ev.date).getTime();
+    const timeB = new Date(b.ev.date).getTime();
+    if (!isNaN(timeA) && !isNaN(timeB)) return timeA - timeB;
+    return 0;
+  });
+
+  const top = (hasSignal ? scored.filter((s) => s.score > 0) : scored).slice(0, 6);
+  const result = await Promise.all(top.map(({ ev }) => buildEventResponse(ev)));
+  res.json(result);
+});
+
 router.get("/events/:id", async (req, res): Promise<void> => {
   const params = GetEventParams.safeParse(req.params);
   if (!params.success) {
@@ -244,6 +312,9 @@ router.post("/events/:id/join", async (req, res): Promise<void> => {
     return;
   }
 
+  const userId = requireUserId(req, res);
+  if (userId == null) return;
+
   const [event] = await db.select().from(eventsTable).where(eq(eventsTable.id, params.data.id));
   if (!event) {
     res.status(404).json({ error: "Event not found" });
@@ -253,7 +324,7 @@ router.post("/events/:id/join", async (req, res): Promise<void> => {
   const [existing] = await db
     .select()
     .from(attendancesTable)
-    .where(and(eq(attendancesTable.eventId, params.data.id), eq(attendancesTable.userId, parsed.data.userId)));
+    .where(and(eq(attendancesTable.eventId, params.data.id), eq(attendancesTable.userId, userId)));
 
   if (existing) {
     res.status(400).json({ error: "Already joined or requested this event", status: existing.status });
@@ -264,8 +335,27 @@ router.post("/events/:id/join", async (req, res): Promise<void> => {
 
   const [attendance] = await db
     .insert(attendancesTable)
-    .values({ eventId: params.data.id, userId: parsed.data.userId, status })
+    .values({ eventId: params.data.id, userId, status })
     .returning();
+
+  if (event.hostId !== userId) {
+    const [actor] = await db
+      .select({ name: usersTable.name })
+      .from(usersTable)
+      .where(eq(usersTable.id, userId));
+    const actorName = actor?.name ?? "Someone";
+    await createNotification({
+      recipientId: event.hostId,
+      actorId: userId,
+      eventId: event.id,
+      type: status === "pending" ? "join_request" : "event_join",
+      title:
+        status === "pending"
+          ? `${actorName} requested to join`
+          : `${actorName} joined your event`,
+      body: event.title,
+    });
+  }
 
   res.status(201).json({ ...attendance, joinedAt: attendance.joinedAt.toISOString() });
 });
@@ -283,9 +373,12 @@ router.delete("/events/:id/leave", async (req, res): Promise<void> => {
     return;
   }
 
+  const userId = requireUserId(req, res);
+  if (userId == null) return;
+
   await db
     .delete(attendancesTable)
-    .where(and(eq(attendancesTable.eventId, params.data.id), eq(attendancesTable.userId, parsed.data.userId)));
+    .where(and(eq(attendancesTable.eventId, params.data.id), eq(attendancesTable.userId, userId)));
 
   res.sendStatus(204);
 });
@@ -323,6 +416,19 @@ router.get("/events/:id/requests", async (req, res): Promise<void> => {
     return;
   }
 
+  const sessionUserId = requireUserId(req, res);
+  if (sessionUserId == null) return;
+
+  const [event] = await db.select().from(eventsTable).where(eq(eventsTable.id, params.data.id));
+  if (!event) {
+    res.status(404).json({ error: "Event not found" });
+    return;
+  }
+  if (event.hostId !== sessionUserId) {
+    res.status(403).json({ error: "Only the event organizer can view requests" });
+    return;
+  }
+
   const rows = await db
     .select({ attendance: attendancesTable, user: usersTable })
     .from(attendancesTable)
@@ -350,13 +456,27 @@ router.post("/events/:id/requests/:userId/approve", async (req, res): Promise<vo
     return;
   }
 
+  const sessionUserId = requireUserId(req, res);
+  if (sessionUserId == null) return;
+
+  const [event] = await db.select().from(eventsTable).where(eq(eventsTable.id, params.data.id));
+  if (!event) {
+    res.status(404).json({ error: "Event not found" });
+    return;
+  }
+  if (event.hostId !== sessionUserId) {
+    res.status(403).json({ error: "Only the event organizer can manage requests" });
+    return;
+  }
+
   const [attendance] = await db
     .update(attendancesTable)
     .set({ status: "confirmed" })
     .where(
       and(
         eq(attendancesTable.eventId, params.data.id),
-        eq(attendancesTable.userId, params.data.userId)
+        eq(attendancesTable.userId, params.data.userId),
+        eq(attendancesTable.status, "pending")
       )
     )
     .returning();
@@ -365,6 +485,15 @@ router.post("/events/:id/requests/:userId/approve", async (req, res): Promise<vo
     res.status(404).json({ error: "Request not found" });
     return;
   }
+
+  await createNotification({
+    recipientId: params.data.userId,
+    actorId: sessionUserId,
+    eventId: event.id,
+    type: "request_approved",
+    title: "Your request was approved",
+    body: event.title,
+  });
 
   res.json({ ...attendance, joinedAt: attendance.joinedAt.toISOString() });
 });
@@ -376,13 +505,27 @@ router.post("/events/:id/requests/:userId/reject", async (req, res): Promise<voi
     return;
   }
 
+  const sessionUserId = requireUserId(req, res);
+  if (sessionUserId == null) return;
+
+  const [event] = await db.select().from(eventsTable).where(eq(eventsTable.id, params.data.id));
+  if (!event) {
+    res.status(404).json({ error: "Event not found" });
+    return;
+  }
+  if (event.hostId !== sessionUserId) {
+    res.status(403).json({ error: "Only the event organizer can manage requests" });
+    return;
+  }
+
   const [attendance] = await db
     .update(attendancesTable)
     .set({ status: "rejected" })
     .where(
       and(
         eq(attendancesTable.eventId, params.data.id),
-        eq(attendancesTable.userId, params.data.userId)
+        eq(attendancesTable.userId, params.data.userId),
+        eq(attendancesTable.status, "pending")
       )
     )
     .returning();

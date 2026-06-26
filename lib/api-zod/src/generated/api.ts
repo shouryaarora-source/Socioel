@@ -329,6 +329,97 @@ export const RejectJoinRequestResponse = zod.object({
 
 
 /**
+ * @summary Personalized event suggestions for the logged-in user
+ */
+export const GetSuggestedEventsResponseItem = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "location": zod.string(),
+  "date": zod.string(),
+  "time": zod.string(),
+  "hostId": zod.number(),
+  "hostName": zod.string().nullish(),
+  "hostAvatar": zod.string().nullish(),
+  "attendeeCount": zod.number(),
+  "maxAttendees": zod.number(),
+  "imageUrl": zod.string().nullish(),
+  "latitude": zod.number().nullish(),
+  "longitude": zod.number().nullish(),
+  "distanceKm": zod.number().nullish(),
+  "joinMode": zod.enum(['open', 'approval_required']).optional(),
+  "createdAt": zod.string()
+})
+export const GetSuggestedEventsResponse = zod.array(GetSuggestedEventsResponseItem)
+
+
+/**
+ * @summary List notifications for the logged-in user
+ */
+export const ListNotificationsResponseItem = zod.object({
+  "id": zod.number(),
+  "type": zod.string(),
+  "title": zod.string(),
+  "body": zod.string().nullish(),
+  "read": zod.boolean(),
+  "createdAt": zod.string(),
+  "actorId": zod.number().nullish(),
+  "actorName": zod.string().nullish(),
+  "actorAvatar": zod.string().nullish(),
+  "eventId": zod.number().nullish(),
+  "eventTitle": zod.string().nullish()
+})
+export const ListNotificationsResponse = zod.array(ListNotificationsResponseItem)
+
+
+/**
+ * @summary Count of unread notifications for the logged-in user
+ */
+export const GetUnreadNotificationCountResponse = zod.object({
+  "count": zod.number()
+})
+
+
+/**
+ * @summary Mark all notifications as read
+ */
+export const MarkAllNotificationsReadResponse = zod.void()
+
+
+/**
+ * @summary Get the VAPID public key for Web Push subscription
+ */
+export const GetVapidPublicKeyResponse = zod.object({
+  "publicKey": zod.string()
+})
+
+
+/**
+ * @summary Register a Web Push subscription for the logged-in user
+ */
+export const SubscribePushBody = zod.object({
+  "endpoint": zod.string(),
+  "keys": zod.object({
+  "p256dh": zod.string(),
+  "auth": zod.string()
+})
+})
+
+export const SubscribePushResponse = zod.void()
+
+
+/**
+ * @summary Remove a Web Push subscription
+ */
+export const UnsubscribePushBody = zod.object({
+  "endpoint": zod.string()
+})
+
+export const UnsubscribePushResponse = zod.void()
+
+
+/**
  * @summary Log in with identifier and password
  */
 

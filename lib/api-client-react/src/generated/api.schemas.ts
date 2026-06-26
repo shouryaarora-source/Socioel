@@ -256,6 +256,48 @@ export interface RegisterInput {
   password: string;
 }
 
+export interface Notification {
+  id: number;
+  type: string;
+  title: string;
+  /** @nullable */
+  body?: string | null;
+  read: boolean;
+  createdAt: string;
+  /** @nullable */
+  actorId?: number | null;
+  /** @nullable */
+  actorName?: string | null;
+  /** @nullable */
+  actorAvatar?: string | null;
+  /** @nullable */
+  eventId?: number | null;
+  /** @nullable */
+  eventTitle?: string | null;
+}
+
+export interface UnreadCount {
+  count: number;
+}
+
+export interface VapidPublicKey {
+  publicKey: string;
+}
+
+export type PushSubscriptionInputKeys = {
+  p256dh: string;
+  auth: string;
+};
+
+export interface PushSubscriptionInput {
+  endpoint: string;
+  keys: PushSubscriptionInputKeys;
+}
+
+export interface PushUnsubscribeInput {
+  endpoint: string;
+}
+
 export type ListEventsParams = {
 category?: string;
 search?: string;

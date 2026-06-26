@@ -6,6 +6,8 @@ import categoriesRouter from "./categories";
 import commentsRouter from "./comments";
 import storageRouter from "./storage";
 import authRouter from "./auth";
+import notificationsRouter from "./notifications";
+import pushRouter from "./push";
 
 const router: IRouter = Router();
 
@@ -16,5 +18,7 @@ router.use(eventsRouter);
 router.use(commentsRouter);
 router.use(usersRouter);
 router.use(categoriesRouter);
+router.use(notificationsRouter);
+router.use(pushRouter);
 
 export default router;

@@ -1,10 +1,17 @@
 import { useState, useEffect, useCallback } from "react";
 import { Navbar } from "@/components/Navbar";
 import { EventCard } from "@/components/EventCard";
-import { useListEvents, useGetFeaturedEvents, useListCategories } from "@workspace/api-client-react";
+import {
+  useListEvents,
+  useGetFeaturedEvents,
+  useListCategories,
+  useGetSuggestedEvents,
+  getGetSuggestedEventsQueryKey,
+} from "@workspace/api-client-react";
+import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Compass, Loader2, MapPin, X } from "lucide-react";
+import { Search, Compass, Loader2, MapPin, X, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 export default function Home() {
@@ -29,6 +36,13 @@ export default function Home() {
     nearLng: nearCoords?.lng,
   });
   const { data: categories } = useListCategories();
+  const { user } = useAuth();
+  const { data: suggested } = useGetSuggestedEvents({
+    query: {
+      queryKey: getGetSuggestedEventsQueryKey(),
+      enabled: !!user && !search && !selectedCategory && !nearCoords,
+    },
+  });
 
   const handleNearMe = useCallback(() => {
     if (nearCoords) {
@@ -132,6 +146,21 @@ export default function Home() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {featuredEvents.slice(0, 3).map((event, i) => (
                 <EventCard key={event.id} event={event} featured={i === 0} />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Suggested for you */}
+        {user && !search && !selectedCategory && !isNearActive && suggested && suggested.length > 0 && (
+          <section className="mb-14">
+            <div className="flex items-center gap-2 mb-6">
+              <Sparkles className="w-6 h-6 text-secondary" />
+              <h2 className="text-2xl font-display font-bold">Suggested for you</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {suggested.map((event) => (
+                <EventCard key={event.id} event={event} />
               ))}
             </div>
           </section>

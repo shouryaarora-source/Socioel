@@ -19,6 +19,10 @@ tags:
     description: Category operations
   - name: Storage
     description: Object storage endpoints
+  - name: notifications
+    description: Notification operations
+  - name: push
+    description: Web Push operations
 paths:
   /healthz:
     get:
@@ -310,6 +314,113 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Attendance"
+
+  /events/suggested:
+    get:
+      operationId: getSuggestedEvents
+      tags: [events]
+      summary: Personalized event suggestions for the logged-in user
+      responses:
+        "200":
+          description: Suggested events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Event"
+        "401":
+          description: Not authenticated
+
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [notifications]
+      summary: List notifications for the logged-in user
+      responses:
+        "200":
+          description: Notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+        "401":
+          description: Not authenticated
+
+  /notifications/unread-count:
+    get:
+      operationId: getUnreadNotificationCount
+      tags: [notifications]
+      summary: Count of unread notifications for the logged-in user
+      responses:
+        "200":
+          description: Unread count
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnreadCount"
+        "401":
+          description: Not authenticated
+
+  /notifications/read-all:
+    post:
+      operationId: markAllNotificationsRead
+      tags: [notifications]
+      summary: Mark all notifications as read
+      responses:
+        "204":
+          description: Marked read
+        "401":
+          description: Not authenticated
+
+  /push/vapid-public-key:
+    get:
+      operationId: getVapidPublicKey
+      tags: [push]
+      summary: Get the VAPID public key for Web Push subscription
+      responses:
+        "200":
+          description: Public key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VapidPublicKey"
+
+  /push/subscribe:
+    post:
+      operationId: subscribePush
+      tags: [push]
+      summary: Register a Web Push subscription for the logged-in user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PushSubscriptionInput"
+      responses:
+        "204":
+          description: Subscribed
+        "401":
+          description: Not authenticated
+
+  /push/unsubscribe:
+    post:
+      operationId: unsubscribePush
+      tags: [push]
+      summary: Remove a Web Push subscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PushUnsubscribeInput"
+      responses:
+        "204":
+          description: Unsubscribed
+        "401":
+          description: Not authenticated
 
   /auth/login:
     post:
@@ -959,3 +1070,66 @@ components:
           type: string
           minLength: 6
           description: Account password (min 6 characters)
+
+    Notification:
+      type: object
+      required: [id, type, title, read, createdAt]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+        title:
+          type: string
+        body:
+          type: ["string", "null"]
+        read:
+          type: boolean
+        createdAt:
+          type: string
+        actorId:
+          type: ["integer", "null"]
+        actorName:
+          type: ["string", "null"]
+        actorAvatar:
+          type: ["string", "null"]
+        eventId:
+          type: ["integer", "null"]
+        eventTitle:
+          type: ["string", "null"]
+
+    UnreadCount:
+      type: object
+      required: [count]
+      properties:
+        count:
+          type: integer
+
+    VapidPublicKey:
+      type: object
+      required: [publicKey]
+      properties:
+        publicKey:
+          type: string
+
+    PushSubscriptionInput:
+      type: object
+      required: [endpoint, keys]
+      properties:
+        endpoint:
+          type: string
+        keys:
+          type: object
+          required: [p256dh, auth]
+          properties:
+            p256dh:
+              type: string
+            auth:
+              type: string
+
+    PushUnsubscribeInput:
+      type: object
+      required: [endpoint]
+      properties:
+        endpoint:
+          type: string
