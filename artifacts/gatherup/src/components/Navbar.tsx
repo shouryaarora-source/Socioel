@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Plus, Compass, Grid, User, LogIn, LogOut, Map } from "lucide-react";
+import { Plus, Compass, Grid, User, LogIn, LogOut, Map, Bell } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -46,39 +46,67 @@ export function Navbar() {
 
           {!isLoading && (
             user ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
-                    <Avatar className="w-9 h-9 border-2 border-primary/20 hover:border-primary/60 transition-colors">
-                      <AvatarImage src={user.avatarUrl || ""} className="object-cover" />
-                      <AvatarFallback className="bg-primary text-primary-foreground font-display font-bold text-sm">
-                        {user.name?.charAt(0)?.toUpperCase() || "?"}
-                      </AvatarFallback>
-                    </Avatar>
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48 rounded-2xl">
-                  <div className="px-3 py-2">
-                    <p className="text-sm font-semibold text-foreground truncate">{user.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{user.email || user.phone}</p>
-                  </div>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild className="cursor-pointer rounded-xl">
-                    <Link href={profilePath}>
-                      <User className="w-4 h-4 mr-2" />
-                      My Profile
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={handleLogout}
-                    className="cursor-pointer text-destructive focus:text-destructive rounded-xl"
-                  >
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Sign Out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <div className="flex items-center gap-1.5">
+                {/* Notifications */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className="relative flex h-9 w-9 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                      aria-label="Notifications"
+                    >
+                      <Bell className="w-5 h-5" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-72 rounded-2xl">
+                    <div className="px-3 py-2">
+                      <p className="text-sm font-semibold text-foreground">Notifications</p>
+                    </div>
+                    <DropdownMenuSeparator />
+                    <div className="flex flex-col items-center gap-2 px-3 py-8 text-center">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                        <Bell className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                      <p className="text-sm font-medium text-foreground">You're all caught up</p>
+                      <p className="text-xs text-muted-foreground">No new notifications right now.</p>
+                    </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Profile menu */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
+                      <Avatar className="w-9 h-9 border-2 border-primary/20 hover:border-primary/60 transition-colors">
+                        <AvatarImage src={user.avatarUrl || ""} className="object-cover" />
+                        <AvatarFallback className="bg-primary text-primary-foreground font-display font-bold text-sm">
+                          {user.name?.charAt(0)?.toUpperCase() || "?"}
+                        </AvatarFallback>
+                      </Avatar>
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48 rounded-2xl">
+                    <div className="px-3 py-2">
+                      <p className="text-sm font-semibold text-foreground truncate">{user.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">{user.email || user.phone}</p>
+                    </div>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild className="cursor-pointer rounded-xl">
+                      <Link href={profilePath}>
+                        <User className="w-4 h-4 mr-2" />
+                        My Profile
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={handleLogout}
+                      className="cursor-pointer text-destructive focus:text-destructive rounded-xl"
+                    >
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Sign Out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             ) : (
               <Button
                 size="sm"
