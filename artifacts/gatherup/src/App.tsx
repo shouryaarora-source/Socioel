@@ -8,6 +8,7 @@ import EventDetail from "@/pages/EventDetail";
 import CreateEvent from "@/pages/CreateEvent";
 import Profile from "@/pages/Profile";
 import Categories from "@/pages/Categories";
+import VideoTemplate from "@/components/video/VideoTemplate";
 
 const queryClient = new QueryClient();
 
@@ -19,6 +20,7 @@ function Router() {
       <Route path="/events/new" component={CreateEvent} />
       <Route path="/events/:id" component={EventDetail} />
       <Route path="/profile/:id" component={Profile} />
+      <Route path="/video" component={VideoTemplate} />
       <Route component={NotFound} />
     </Switch>
   );
