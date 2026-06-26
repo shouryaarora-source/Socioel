@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { Navbar } from "@/components/Navbar";
 import { useListCategories, useGetEventStats } from "@workspace/api-client-react";
 import { Card } from "@/components/ui/card";
-import { Loader2, ArrowRight } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Loader2, ArrowRight, Search } from "lucide-react";
 
 const CATEGORY_STYLES: Record<string, { bg: string, text: string }> = {
   running: { bg: "bg-primary", text: "text-primary-foreground" },
@@ -17,6 +19,7 @@ export default function Categories() {
   const [, setLocation] = useLocation();
   const { data: categories, isLoading: loadingCategories } = useListCategories();
   const { data: stats, isLoading: loadingStats } = useGetEventStats();
+  const [search, setSearch] = useState("");
 
   if (loadingCategories || loadingStats) {
     return (
@@ -51,7 +54,7 @@ export default function Categories() {
         </div>
 
         {stats && (
-          <div className="grid grid-cols-2 gap-4 max-w-2xl mx-auto mb-16">
+          <div className="grid grid-cols-2 gap-4 max-w-2xl mx-auto mb-10">
             <div className="bg-card border rounded-3xl p-6 text-center shadow-sm">
               <div className="text-4xl font-display font-bold text-primary mb-1">
                 {stats.totalEvents}
@@ -71,8 +74,20 @@ export default function Categories() {
           </div>
         )}
 
+        <div className="max-w-md mx-auto mb-12">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-5 h-5" />
+            <Input
+              placeholder="Search categories..."
+              className="pl-10 h-12 rounded-full bg-card shadow-sm border-0 focus-visible:ring-primary"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {categories?.map((cat) => {
+          {categories?.filter((cat) => cat.name.toLowerCase().includes(search.toLowerCase())).map((cat) => {
             const style = CATEGORY_STYLES[cat.name.toLowerCase()] || { bg: "bg-muted", text: "text-foreground" };
             
             return (
