@@ -1,6 +1,6 @@
 kind = "web"
 previewPath = "/"
-title = "GatherUp"
+title = "Socio-el"
 version = "1.0.0"
 id = "artifacts/gatherup"
 router = "path"

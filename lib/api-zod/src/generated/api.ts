@@ -228,6 +228,16 @@ export const GetEventAttendeesResponseItem = zod.object({
   "name": zod.string(),
   "bio": zod.string().nullish(),
   "avatarUrl": zod.string().nullish(),
+  "profession": zod.string().nullish(),
+  "age": zod.number().nullish(),
+  "city": zod.string().nullish(),
+  "interests": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "website": zod.string().nullish(),
+  "instagram": zod.string().nullish(),
+  "verified": zod.boolean(),
+  "verifiedAt": zod.string().nullish(),
+  "verificationSelfieUrl": zod.string().nullish(),
   "eventsHosted": zod.number().nullish(),
   "eventsJoined": zod.number().nullish(),
   "createdAt": zod.string()
@@ -249,6 +259,16 @@ export const CreateUserResponse = zod.object({
   "name": zod.string(),
   "bio": zod.string().nullish(),
   "avatarUrl": zod.string().nullish(),
+  "profession": zod.string().nullish(),
+  "age": zod.number().nullish(),
+  "city": zod.string().nullish(),
+  "interests": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "website": zod.string().nullish(),
+  "instagram": zod.string().nullish(),
+  "verified": zod.boolean(),
+  "verifiedAt": zod.string().nullish(),
+  "verificationSelfieUrl": zod.string().nullish(),
   "eventsHosted": zod.number().nullish(),
   "eventsJoined": zod.number().nullish(),
   "createdAt": zod.string()
@@ -267,6 +287,89 @@ export const GetUserResponse = zod.object({
   "name": zod.string(),
   "bio": zod.string().nullish(),
   "avatarUrl": zod.string().nullish(),
+  "profession": zod.string().nullish(),
+  "age": zod.number().nullish(),
+  "city": zod.string().nullish(),
+  "interests": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "website": zod.string().nullish(),
+  "instagram": zod.string().nullish(),
+  "verified": zod.boolean(),
+  "verifiedAt": zod.string().nullish(),
+  "verificationSelfieUrl": zod.string().nullish(),
+  "eventsHosted": zod.number().nullish(),
+  "eventsJoined": zod.number().nullish(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Update user profile
+ */
+export const UpdateUserParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateUserBody = zod.object({
+  "name": zod.string().optional(),
+  "bio": zod.string().optional(),
+  "avatarUrl": zod.string().optional(),
+  "profession": zod.string().optional(),
+  "age": zod.number().optional(),
+  "city": zod.string().optional(),
+  "interests": zod.string().optional(),
+  "phone": zod.string().optional(),
+  "website": zod.string().optional(),
+  "instagram": zod.string().optional()
+})
+
+export const UpdateUserResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "bio": zod.string().nullish(),
+  "avatarUrl": zod.string().nullish(),
+  "profession": zod.string().nullish(),
+  "age": zod.number().nullish(),
+  "city": zod.string().nullish(),
+  "interests": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "website": zod.string().nullish(),
+  "instagram": zod.string().nullish(),
+  "verified": zod.boolean(),
+  "verifiedAt": zod.string().nullish(),
+  "verificationSelfieUrl": zod.string().nullish(),
+  "eventsHosted": zod.number().nullish(),
+  "eventsJoined": zod.number().nullish(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Submit selfie for profile verification
+ */
+export const VerifyUserParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const VerifyUserBody = zod.object({
+  "selfieObjectPath": zod.string()
+})
+
+export const VerifyUserResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "bio": zod.string().nullish(),
+  "avatarUrl": zod.string().nullish(),
+  "profession": zod.string().nullish(),
+  "age": zod.number().nullish(),
+  "city": zod.string().nullish(),
+  "interests": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "website": zod.string().nullish(),
+  "instagram": zod.string().nullish(),
+  "verified": zod.boolean(),
+  "verifiedAt": zod.string().nullish(),
+  "verificationSelfieUrl": zod.string().nullish(),
   "eventsHosted": zod.number().nullish(),
   "eventsJoined": zod.number().nullish(),
   "createdAt": zod.string()
@@ -376,6 +479,21 @@ export const DeleteCommentParams = zod.object({
 })
 
 export const DeleteCommentResponse = zod.void()
+
+
+/**
+ * @summary Request a presigned URL for file upload
+ */
+export const RequestUploadUrlBody = zod.object({
+  "name": zod.string(),
+  "size": zod.number(),
+  "contentType": zod.string()
+})
+
+export const RequestUploadUrlResponse = zod.object({
+  "uploadURL": zod.string(),
+  "objectPath": zod.string()
+})
 
 
 /**

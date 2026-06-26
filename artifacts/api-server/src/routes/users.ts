@@ -1,9 +1,32 @@
 import { Router, type IRouter } from "express";
 import { eq, sql } from "drizzle-orm";
 import { db, usersTable, eventsTable, attendancesTable } from "@workspace/db";
-import { CreateUserBody, GetUserParams, GetUserHostedEventsParams, GetUserJoinedEventsParams } from "@workspace/api-zod";
+import {
+  CreateUserBody,
+  GetUserParams,
+  UpdateUserParams,
+  UpdateUserBody,
+  GetUserHostedEventsParams,
+  GetUserJoinedEventsParams,
+  VerifyUserParams,
+  VerifyUserBody,
+} from "@workspace/api-zod";
 
 const router: IRouter = Router();
+
+function serializeUser(
+  user: typeof usersTable.$inferSelect,
+  hostedCount = 0,
+  joinedCount = 0
+) {
+  return {
+    ...user,
+    createdAt: user.createdAt.toISOString(),
+    verifiedAt: user.verifiedAt?.toISOString() ?? null,
+    eventsHosted: hostedCount,
+    eventsJoined: joinedCount,
+  };
+}
 
 router.post("/users", async (req, res): Promise<void> => {
   const parsed = CreateUserBody.safeParse(req.body);
@@ -13,7 +36,7 @@ router.post("/users", async (req, res): Promise<void> => {
   }
 
   const [user] = await db.insert(usersTable).values(parsed.data).returning();
-  res.status(201).json({ ...user, createdAt: user.createdAt.toISOString(), eventsHosted: 0, eventsJoined: 0 });
+  res.status(201).json(serializeUser(user));
 });
 
 router.get("/users/:id", async (req, res): Promise<void> => {
@@ -39,12 +62,85 @@ router.get("/users/:id", async (req, res): Promise<void> => {
     .from(attendancesTable)
     .where(eq(attendancesTable.userId, user.id));
 
-  res.json({
-    ...user,
-    createdAt: user.createdAt.toISOString(),
-    eventsHosted: hostedCount,
-    eventsJoined: joinedCount,
-  });
+  res.json(serializeUser(user, hostedCount, joinedCount));
+});
+
+router.patch("/users/:id", async (req, res): Promise<void> => {
+  const params = UpdateUserParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const parsed = UpdateUserBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const [user] = await db
+    .update(usersTable)
+    .set(parsed.data)
+    .where(eq(usersTable.id, params.data.id))
+    .returning();
+
+  if (!user) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  const [{ hostedCount }] = await db
+    .select({ hostedCount: sql<number>`cast(count(*) as int)` })
+    .from(eventsTable)
+    .where(eq(eventsTable.hostId, user.id));
+
+  const [{ joinedCount }] = await db
+    .select({ joinedCount: sql<number>`cast(count(*) as int)` })
+    .from(attendancesTable)
+    .where(eq(attendancesTable.userId, user.id));
+
+  res.json(serializeUser(user, hostedCount, joinedCount));
+});
+
+router.post("/users/:id/verify", async (req, res): Promise<void> => {
+  const params = VerifyUserParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const parsed = VerifyUserBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const [user] = await db
+    .update(usersTable)
+    .set({
+      verified: true,
+      verifiedAt: new Date(),
+      verificationSelfieUrl: parsed.data.selfieObjectPath,
+    })
+    .where(eq(usersTable.id, params.data.id))
+    .returning();
+
+  if (!user) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  const [{ hostedCount }] = await db
+    .select({ hostedCount: sql<number>`cast(count(*) as int)` })
+    .from(eventsTable)
+    .where(eq(eventsTable.hostId, user.id));
+
+  const [{ joinedCount }] = await db
+    .select({ joinedCount: sql<number>`cast(count(*) as int)` })
+    .from(attendancesTable)
+    .where(eq(attendancesTable.userId, user.id));
+
+  res.json(serializeUser(user, hostedCount, joinedCount));
 });
 
 router.get("/users/:id/hosted", async (req, res): Promise<void> => {

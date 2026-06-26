@@ -14,6 +14,25 @@ export interface User {
   /** @nullable */
   avatarUrl?: string | null;
   /** @nullable */
+  profession?: string | null;
+  /** @nullable */
+  age?: number | null;
+  /** @nullable */
+  city?: string | null;
+  /** @nullable */
+  interests?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  website?: string | null;
+  /** @nullable */
+  instagram?: string | null;
+  verified: boolean;
+  /** @nullable */
+  verifiedAt?: string | null;
+  /** @nullable */
+  verificationSelfieUrl?: string | null;
+  /** @nullable */
   eventsHosted?: number | null;
   /** @nullable */
   eventsJoined?: number | null;

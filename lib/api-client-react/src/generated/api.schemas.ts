@@ -82,6 +82,25 @@ export interface User {
   /** @nullable */
   avatarUrl?: string | null;
   /** @nullable */
+  profession?: string | null;
+  /** @nullable */
+  age?: number | null;
+  /** @nullable */
+  city?: string | null;
+  /** @nullable */
+  interests?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  website?: string | null;
+  /** @nullable */
+  instagram?: string | null;
+  verified: boolean;
+  /** @nullable */
+  verifiedAt?: string | null;
+  /** @nullable */
+  verificationSelfieUrl?: string | null;
+  /** @nullable */
   eventsHosted?: number | null;
   /** @nullable */
   eventsJoined?: number | null;
@@ -92,6 +111,34 @@ export interface UserInput {
   name: string;
   bio?: string;
   avatarUrl?: string;
+}
+
+export interface UserUpdate {
+  name?: string;
+  bio?: string;
+  avatarUrl?: string;
+  profession?: string;
+  age?: number;
+  city?: string;
+  interests?: string;
+  phone?: string;
+  website?: string;
+  instagram?: string;
+}
+
+export interface VerifyUserInput {
+  selfieObjectPath: string;
+}
+
+export interface UploadUrlRequest {
+  name: string;
+  size: number;
+  contentType: string;
+}
+
+export interface UploadUrlResponse {
+  uploadURL: string;
+  objectPath: string;
 }
 
 export interface Category {

@@ -15,6 +15,8 @@ tags:
     description: User operations
   - name: categories
     description: Category operations
+  - name: Storage
+    description: Object storage endpoints
 paths:
   /healthz:
     get:
@@ -265,6 +267,54 @@ paths:
                 $ref: "#/components/schemas/User"
         "404":
           description: Not found
+    patch:
+      operationId: updateUser
+      tags: [users]
+      summary: Update user profile
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdate"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /users/{id}/verify:
+    post:
+      operationId: verifyUser
+      tags: [users]
+      summary: Submit selfie for profile verification
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyUserInput"
+      responses:
+        "200":
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
 
   /users/{id}/hosted:
     get:
@@ -371,6 +421,25 @@ paths:
       responses:
         "204":
           description: Deleted
+
+  /storage/uploads/request-url:
+    post:
+      tags: [Storage]
+      operationId: requestUploadUrl
+      summary: Request a presigned URL for file upload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadUrlRequest"
+      responses:
+        "200":
+          description: Presigned upload URL generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadUrlResponse"
 
   /categories:
     get:
@@ -514,7 +583,7 @@ components:
 
     User:
       type: object
-      required: [id, name, createdAt]
+      required: [id, name, verified, createdAt]
       properties:
         id:
           type: integer
@@ -523,6 +592,26 @@ components:
         bio:
           type: ["string", "null"]
         avatarUrl:
+          type: ["string", "null"]
+        profession:
+          type: ["string", "null"]
+        age:
+          type: ["integer", "null"]
+        city:
+          type: ["string", "null"]
+        interests:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        website:
+          type: ["string", "null"]
+        instagram:
+          type: ["string", "null"]
+        verified:
+          type: boolean
+        verifiedAt:
+          type: ["string", "null"]
+        verificationSelfieUrl:
           type: ["string", "null"]
         eventsHosted:
           type: ["integer", "null"]
@@ -540,6 +629,57 @@ components:
         bio:
           type: string
         avatarUrl:
+          type: string
+
+    UserUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        bio:
+          type: string
+        avatarUrl:
+          type: string
+        profession:
+          type: string
+        age:
+          type: integer
+        city:
+          type: string
+        interests:
+          type: string
+        phone:
+          type: string
+        website:
+          type: string
+        instagram:
+          type: string
+
+    VerifyUserInput:
+      type: object
+      required: [selfieObjectPath]
+      properties:
+        selfieObjectPath:
+          type: string
+
+    UploadUrlRequest:
+      type: object
+      required: [name, size, contentType]
+      properties:
+        name:
+          type: string
+        size:
+          type: integer
+        contentType:
+          type: string
+
+    UploadUrlResponse:
+      type: object
+      required: [uploadURL, objectPath]
+      properties:
+        uploadURL:
+          type: string
+        objectPath:
           type: string
 
     Category:
