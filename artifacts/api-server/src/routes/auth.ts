@@ -1,12 +1,9 @@
 import { Router, type IRouter } from "express";
 import { eq, and, gt } from "drizzle-orm";
 import { db, usersTable, otpsTable } from "@workspace/db";
-import { z } from "zod/v4";
+import { SendOtpBody, VerifyOtpBody } from "@workspace/api-zod";
 
 const router: IRouter = Router();
-
-const SendOtpBody = z.object({ phone: z.string().min(7) });
-const VerifyOtpBody = z.object({ phone: z.string().min(7), code: z.string().length(6) });
 
 function generateOtp(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -38,7 +35,7 @@ router.post("/auth/send-otp", async (req, res): Promise<void> => {
   await db.insert(otpsTable).values({ phone, code, expiresAt });
 
   // In production, send SMS here (Twilio, etc.)
-  // For now, return code in dev mode so the UI can display it
+  // For dev: return the code so it can be shown in the UI
   res.json({
     success: true,
     message: "OTP sent",
@@ -75,10 +72,8 @@ router.post("/auth/verify-otp", async (req, res): Promise<void> => {
     return;
   }
 
-  // Mark OTP as used
   await db.update(otpsTable).set({ used: true }).where(eq(otpsTable.id, otp.id));
 
-  // Find or create user by phone
   let [user] = await db
     .select()
     .from(usersTable)
@@ -100,7 +95,6 @@ router.post("/auth/verify-otp", async (req, res): Promise<void> => {
     user = updated;
   }
 
-  // Store in session
   req.session.userId = user.id;
   req.session.phone = phone;
 
@@ -133,6 +127,7 @@ router.post("/auth/logout", async (req, res): Promise<void> => {
       res.status(500).json({ error: "Logout failed" });
       return;
     }
+    res.clearCookie("connect.sid");
     res.json({ success: true });
   });
 });
