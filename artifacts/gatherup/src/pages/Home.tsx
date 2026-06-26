@@ -5,7 +5,7 @@ import { EventMapView } from "@/components/EventMapView";
 import { useListEvents, useGetFeaturedEvents, useListCategories } from "@workspace/api-client-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Compass, Loader2, MapPin, X, LayoutGrid, Map } from "lucide-react";
+import { Search, Compass, Loader2, MapPin, X, Map } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 export default function Home() {
@@ -14,7 +14,6 @@ export default function Home() {
   const [nearCoords, setNearCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<"list" | "map">("list");
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -53,13 +52,17 @@ export default function Home() {
   }, [nearCoords]);
 
   const isNearActive = !!nearCoords;
+  const eventsWithCoords = (events ?? []).filter(
+    (e) => e.latitude != null && e.longitude != null
+  );
 
   return (
-    <div className="min-h-screen pb-20 md:pb-0">
+    <div className="min-h-screen pb-20">
       <Navbar />
-      
+
       <main className="container mx-auto px-4 py-8">
-        <section className="mb-12">
+        {/* ── Hero ── */}
+        <section className="mb-10">
           <div className="max-w-2xl mx-auto text-center mb-8">
             <h1 className="text-4xl md:text-5xl font-display font-extrabold mb-4 tracking-tight text-foreground">
               Find your <span className="text-primary">people.</span><br />
@@ -68,12 +71,12 @@ export default function Home() {
             <p className="text-lg text-muted-foreground mb-8">
               Discover local runs, hikes, and community meetups happening near you.
             </p>
-            
+
             <div className="flex gap-2 max-w-lg mx-auto">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-5 h-5" />
-                <Input 
-                  placeholder="Search events by name or location..." 
+                <Input
+                  placeholder="Search events by name or location..."
                   className="pl-10 h-12 rounded-full bg-card shadow-sm border-0 focus-visible:ring-primary"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
@@ -92,7 +95,7 @@ export default function Home() {
                   <MapPin className="w-4 h-4" />
                 )}
                 <span className="text-sm font-medium">
-                  {isNearActive ? "Near Me" : locationLoading ? "Locating…" : "Near Me"}
+                  {locationLoading ? "Locating…" : "Near Me"}
                 </span>
                 {isNearActive && <X className="w-3.5 h-3.5 ml-0.5 opacity-70" />}
               </Button>
@@ -102,19 +105,20 @@ export default function Home() {
             )}
           </div>
 
+          {/* Category pills */}
           <div className="flex gap-2 overflow-x-auto pb-4 pt-2 px-2 -mx-2 hide-scrollbar justify-center">
-            <Badge 
+            <Badge
               variant={!selectedCategory ? "default" : "outline"}
-              className={`cursor-pointer px-4 py-2 rounded-full text-sm transition-colors ${!selectedCategory ? 'shadow-md' : 'bg-background hover:bg-muted'}`}
+              className={`cursor-pointer px-4 py-2 rounded-full text-sm transition-colors ${!selectedCategory ? "shadow-md" : "bg-background hover:bg-muted"}`}
               onClick={() => setSelectedCategory(undefined)}
             >
               All Events
             </Badge>
             {categories?.map((cat) => (
-              <Badge 
+              <Badge
                 key={cat.name}
                 variant={selectedCategory === cat.name ? "default" : "outline"}
-                className={`cursor-pointer px-4 py-2 rounded-full text-sm transition-colors ${selectedCategory === cat.name ? 'shadow-md' : 'bg-background hover:bg-muted'}`}
+                className={`cursor-pointer px-4 py-2 rounded-full text-sm transition-colors ${selectedCategory === cat.name ? "shadow-md" : "bg-background hover:bg-muted"}`}
                 onClick={() => setSelectedCategory(cat.name)}
               >
                 {cat.name}
@@ -123,8 +127,38 @@ export default function Home() {
           </div>
         </section>
 
-        {!search && !selectedCategory && !isNearActive && featuredEvents && featuredEvents.length > 0 && viewMode === "list" && (
-          <section className="mb-16">
+        {/* ── Map section ── always visible */}
+        <section className="mb-14">
+          <div className="flex items-center gap-2 mb-4">
+            <Map className="w-5 h-5 text-primary" />
+            <h2 className="text-xl font-display font-bold">
+              {isNearActive ? "Events Near You" : "Events on the Map"}
+            </h2>
+            {eventsWithCoords.length > 0 && (
+              <span className="text-sm text-muted-foreground">
+                — {eventsWithCoords.length} pinned
+              </span>
+            )}
+          </div>
+
+          {loadingEvents ? (
+            <div className="rounded-3xl border bg-card flex items-center justify-center" style={{ height: 420 }}>
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : eventsWithCoords.length === 0 ? (
+            <div className="rounded-3xl border bg-card flex flex-col items-center justify-center gap-3 text-muted-foreground" style={{ height: 280 }}>
+              <MapPin className="w-10 h-10 opacity-30" />
+              <p className="text-sm">No events with map pins yet.</p>
+              <p className="text-xs opacity-70">Events added with a location will appear here.</p>
+            </div>
+          ) : (
+            <EventMapView events={events ?? []} userCoords={nearCoords} />
+          )}
+        </section>
+
+        {/* ── Featured events ── */}
+        {!search && !selectedCategory && !isNearActive && featuredEvents && featuredEvents.length > 0 && (
+          <section className="mb-14">
             <div className="flex items-center gap-2 mb-6">
               <Compass className="w-6 h-6 text-primary" />
               <h2 className="text-2xl font-display font-bold">Featured This Week</h2>
@@ -137,40 +171,20 @@ export default function Home() {
           </section>
         )}
 
+        {/* ── All / filtered events list ── */}
         <section>
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-display font-bold">
-              {isNearActive ? "Events Near You" : search ? "Search Results" : selectedCategory ? `${selectedCategory} Events` : "Upcoming Events"}
+              {isNearActive
+                ? "Events Near You"
+                : search
+                ? "Search Results"
+                : selectedCategory
+                ? `${selectedCategory} Events`
+                : "Upcoming Events"}
             </h2>
-
-            <div className="flex items-center gap-1 bg-card rounded-full p-1 shadow-sm border border-border/40">
-              <button
-                onClick={() => setViewMode("list")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
-                  viewMode === "list"
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-                title="List view"
-              >
-                <LayoutGrid className="w-4 h-4" />
-                <span className="hidden sm:inline">List</span>
-              </button>
-              <button
-                onClick={() => setViewMode("map")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
-                  viewMode === "map"
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-                title="Map view"
-              >
-                <Map className="w-4 h-4" />
-                <span className="hidden sm:inline">Map</span>
-              </button>
-            </div>
           </div>
-          
+
           {(loadingEvents || (!isNearActive && loadingFeatured)) && (
             <div className="py-20 flex justify-center">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -188,22 +202,18 @@ export default function Home() {
                   ? "No events found within 50 km of your location. Try creating one!"
                   : "We couldn't find any events matching your criteria. Why not start your own?"}
               </p>
-              <Button onClick={() => window.location.href = '/events/new'}>
+              <Button onClick={() => (window.location.href = "/events/new")}>
                 Create an Event
               </Button>
             </div>
           )}
 
-          {!loadingEvents && events && events.length > 0 && viewMode === "list" && (
+          {!loadingEvents && events && events.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {events.map((event) => (
                 <EventCard key={event.id} event={event} />
               ))}
             </div>
-          )}
-
-          {!loadingEvents && events && events.length > 0 && viewMode === "map" && (
-            <EventMapView events={events} userCoords={nearCoords} />
           )}
         </section>
       </main>
