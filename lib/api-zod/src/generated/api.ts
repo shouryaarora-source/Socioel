@@ -326,6 +326,59 @@ export const GetUserJoinedEventsResponse = zod.array(GetUserJoinedEventsResponse
 
 
 /**
+ * @summary Get comments for an event
+ */
+export const GetEventCommentsParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetEventCommentsResponseItem = zod.object({
+  "id": zod.number(),
+  "eventId": zod.number(),
+  "userId": zod.number(),
+  "userName": zod.string().nullish(),
+  "userAvatar": zod.string().nullish(),
+  "body": zod.string(),
+  "createdAt": zod.string()
+})
+export const GetEventCommentsResponse = zod.array(GetEventCommentsResponseItem)
+
+
+/**
+ * @summary Post a comment on an event
+ */
+export const CreateCommentParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const CreateCommentBody = zod.object({
+  "userId": zod.number(),
+  "body": zod.string()
+})
+
+export const CreateCommentResponse = zod.object({
+  "id": zod.number(),
+  "eventId": zod.number(),
+  "userId": zod.number(),
+  "userName": zod.string().nullish(),
+  "userAvatar": zod.string().nullish(),
+  "body": zod.string(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Delete a comment
+ */
+export const DeleteCommentParams = zod.object({
+  "id": zod.coerce.number(),
+  "commentId": zod.coerce.number()
+})
+
+export const DeleteCommentResponse = zod.void()
+
+
+/**
  * @summary List categories with event counts
  */
 export const ListCategoriesResponseItem = zod.object({

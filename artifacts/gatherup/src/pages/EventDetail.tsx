@@ -1,25 +1,41 @@
+import { useState } from "react";
 import { useLocation, useParams } from "wouter";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { Navbar } from "@/components/Navbar";
-import { 
-  useGetEvent, 
-  useGetEventAttendees, 
-  useJoinEvent, 
+import {
+  useGetEvent,
+  useGetEventAttendees,
+  useJoinEvent,
   useLeaveEvent,
   useDeleteEvent,
+  useGetEventComments,
+  useCreateComment,
+  useDeleteComment,
   getGetEventQueryKey,
   getGetEventAttendeesQueryKey,
-  getListEventsQueryKey
+  getListEventsQueryKey,
+  getGetEventCommentsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { Calendar, Clock, MapPin, Users, ArrowLeft, Loader2, Trash2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Calendar,
+  Clock,
+  MapPin,
+  Users,
+  ArrowLeft,
+  Loader2,
+  Trash2,
+  MessageSquare,
+  Send,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-const CURRENT_USER_ID = 1; // Hardcoded for simplicity
+const CURRENT_USER_ID = 1;
 
 export default function EventDetail() {
   const params = useParams();
@@ -27,13 +43,18 @@ export default function EventDetail() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [commentBody, setCommentBody] = useState("");
 
   const { data: event, isLoading: loadingEvent } = useGetEvent(id, {
-    query: { enabled: !!id }
+    query: { enabled: !!id },
   });
-  
+
   const { data: attendees, isLoading: loadingAttendees } = useGetEventAttendees(id, {
-    query: { enabled: !!id }
+    query: { enabled: !!id },
+  });
+
+  const { data: comments, isLoading: loadingComments } = useGetEventComments(id, {
+    query: { enabled: !!id },
   });
 
   const joinEvent = useJoinEvent({
@@ -41,12 +62,9 @@ export default function EventDetail() {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getGetEventQueryKey(id) });
         queryClient.invalidateQueries({ queryKey: getGetEventAttendeesQueryKey(id) });
-        toast({
-          title: "You're in!",
-          description: "Successfully joined the event.",
-        });
-      }
-    }
+        toast({ title: "You're in!", description: "Successfully joined the event." });
+      },
+    },
   });
 
   const leaveEvent = useLeaveEvent({
@@ -54,25 +72,39 @@ export default function EventDetail() {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getGetEventQueryKey(id) });
         queryClient.invalidateQueries({ queryKey: getGetEventAttendeesQueryKey(id) });
-        toast({
-          title: "Left event",
-          description: "You are no longer attending this event.",
-        });
-      }
-    }
+        toast({ title: "Left event", description: "You are no longer attending this event." });
+      },
+    },
   });
 
   const deleteEvent = useDeleteEvent({
     mutation: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListEventsQueryKey() });
-        toast({
-          title: "Event deleted",
-          description: "Your event has been successfully cancelled.",
-        });
+        toast({ title: "Event deleted", description: "Your event has been successfully cancelled." });
         setLocation("/");
-      }
-    }
+      },
+    },
+  });
+
+  const createComment = useCreateComment({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetEventCommentsQueryKey(id) });
+        setCommentBody("");
+      },
+      onError: () => {
+        toast({ title: "Error", description: "Could not post comment. Try again.", variant: "destructive" });
+      },
+    },
+  });
+
+  const deleteComment = useDeleteComment({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetEventCommentsQueryKey(id) });
+      },
+    },
   });
 
   if (loadingEvent) {
@@ -92,13 +124,15 @@ export default function EventDetail() {
         <Navbar />
         <div className="flex-1 flex flex-col items-center justify-center text-center p-4">
           <h1 className="text-2xl font-bold mb-2">Event not found</h1>
-          <Button variant="outline" onClick={() => setLocation("/")}>Go back home</Button>
+          <Button variant="outline" onClick={() => setLocation("/")}>
+            Go back home
+          </Button>
         </div>
       </div>
     );
   }
 
-  const isAttending = attendees?.some(a => a.id === CURRENT_USER_ID) || false;
+  const isAttending = attendees?.some((a) => a.id === CURRENT_USER_ID) || false;
   const isHost = event.hostId === CURRENT_USER_ID;
   const isFull = event.attendeeCount >= event.maxAttendees;
 
@@ -116,28 +150,43 @@ export default function EventDetail() {
     }
   };
 
+  const handlePostComment = () => {
+    if (!commentBody.trim()) return;
+    createComment.mutate({ id, data: { userId: CURRENT_USER_ID, body: commentBody.trim() } });
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+      handlePostComment();
+    }
+  };
+
   const image = event.imageUrl || `/images/${event.category.toLowerCase()}.png`;
 
   return (
     <div className="min-h-screen pb-20 md:pb-0 bg-background">
       <Navbar />
-      
+
       <main className="container mx-auto px-4 py-6 max-w-4xl">
         <div className="flex items-center justify-between mb-6">
           <Button variant="ghost" size="sm" className="rounded-full" onClick={() => setLocation("/")}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back
           </Button>
-          
+
           {isHost && (
-            <Button 
-              variant="destructive" 
-              size="sm" 
+            <Button
+              variant="destructive"
+              size="sm"
               className="rounded-full"
               onClick={handleDelete}
               disabled={deleteEvent.isPending}
             >
-              {deleteEvent.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
+              {deleteEvent.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                <Trash2 className="w-4 h-4 mr-2" />
+              )}
               Cancel Event
             </Button>
           )}
@@ -145,9 +194,9 @@ export default function EventDetail() {
 
         <div className="bg-card rounded-3xl overflow-hidden shadow-sm border mb-8">
           <div className="h-64 md:h-96 relative">
-            <img 
-              src={image} 
-              alt={event.title} 
+            <img
+              src={image}
+              alt={event.title}
               className="w-full h-full object-cover"
               onError={(e) => {
                 (e.target as HTMLImageElement).src = "/images/social.png";
@@ -166,7 +215,7 @@ export default function EventDetail() {
                 <h1 className="text-3xl md:text-5xl font-display font-bold mb-4 text-foreground">
                   {event.title}
                 </h1>
-                
+
                 <div className="flex flex-wrap gap-4 text-muted-foreground font-medium">
                   <div className="flex items-center gap-2 bg-muted px-4 py-2 rounded-xl">
                     <Calendar className="w-5 h-5 text-primary" />
@@ -188,25 +237,28 @@ export default function EventDetail() {
                   <div>
                     <p className="text-sm text-muted-foreground font-medium mb-1">Spots left</p>
                     <p className="text-2xl font-bold font-display text-foreground">
-                      {event.maxAttendees - event.attendeeCount} <span className="text-base text-muted-foreground font-normal">/ {event.maxAttendees}</span>
+                      {event.maxAttendees - event.attendeeCount}{" "}
+                      <span className="text-base text-muted-foreground font-normal">
+                        / {event.maxAttendees}
+                      </span>
                     </p>
                   </div>
                   <Users className="w-8 h-8 text-primary opacity-20" />
                 </div>
-                
+
                 {isHost ? (
                   <Button className="w-full" variant="outline" disabled>
                     You are hosting
                   </Button>
                 ) : (
-                  <Button 
+                  <Button
                     size="lg"
                     className={`w-full rounded-xl text-base transition-all ${
-                      isAttending 
-                        ? "bg-secondary text-secondary-foreground hover:bg-secondary/90 hover-elevate" 
-                        : isFull 
-                          ? "" 
-                          : "hover-elevate shadow-md"
+                      isAttending
+                        ? "bg-secondary text-secondary-foreground hover:bg-secondary/90 hover-elevate"
+                        : isFull
+                        ? ""
+                        : "hover-elevate shadow-md"
                     }`}
                     variant={isAttending ? "default" : isFull ? "secondary" : "default"}
                     disabled={(!isAttending && isFull) || joinEvent.isPending || leaveEvent.isPending}
@@ -232,11 +284,113 @@ export default function EventDetail() {
               <div className="md:col-span-2 space-y-8">
                 <section>
                   <h3 className="text-xl font-display font-bold mb-4">About this event</h3>
-                  <div className="prose prose-slate dark:prose-invert">
-                    <p className="text-lg leading-relaxed text-muted-foreground whitespace-pre-wrap">
-                      {event.description}
-                    </p>
+                  <p className="text-lg leading-relaxed text-muted-foreground whitespace-pre-wrap">
+                    {event.description}
+                  </p>
+                </section>
+
+                {/* Comments Section */}
+                <section>
+                  <div className="flex items-center gap-3 mb-6">
+                    <MessageSquare className="w-5 h-5 text-primary" />
+                    <h3 className="text-xl font-display font-bold">Discussion</h3>
+                    {comments && (
+                      <Badge variant="secondary" className="rounded-full">
+                        {comments.length}
+                      </Badge>
+                    )}
                   </div>
+
+                  {/* Post comment */}
+                  <div className="flex gap-3 mb-6">
+                    <Avatar className="w-9 h-9 shrink-0 mt-1">
+                      <AvatarFallback className="bg-primary text-primary-foreground text-sm font-bold">
+                        Y
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 space-y-2">
+                      <Textarea
+                        placeholder="Share logistics, ask a question, or just say hi..."
+                        value={commentBody}
+                        onChange={(e) => setCommentBody(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        className="resize-none min-h-[80px] rounded-2xl border-muted bg-muted/30 focus:bg-background transition-colors text-sm"
+                        disabled={createComment.isPending}
+                      />
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs text-muted-foreground">Cmd+Enter to post</p>
+                        <Button
+                          size="sm"
+                          className="rounded-full px-4"
+                          onClick={handlePostComment}
+                          disabled={!commentBody.trim() || createComment.isPending}
+                        >
+                          {createComment.isPending ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <>
+                              <Send className="w-3.5 h-3.5 mr-1.5" />
+                              Post
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Comment list */}
+                  {loadingComments ? (
+                    <div className="flex justify-center py-6">
+                      <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : comments && comments.length > 0 ? (
+                    <div className="space-y-4">
+                      {comments.map((comment) => (
+                        <div
+                          key={comment.id}
+                          className="flex gap-3 group animate-in fade-in slide-in-from-bottom-2 duration-300"
+                        >
+                          <Avatar className="w-9 h-9 shrink-0 mt-0.5">
+                            <AvatarImage src={comment.userAvatar || ""} />
+                            <AvatarFallback className="bg-muted text-muted-foreground text-sm font-semibold">
+                              {comment.userName?.charAt(0) || "U"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="bg-muted/40 rounded-2xl rounded-tl-sm px-4 py-3 border border-border/50">
+                              <div className="flex items-baseline justify-between gap-2 mb-1">
+                                <span className="text-sm font-semibold text-foreground">
+                                  {comment.userName || "Community Member"}
+                                </span>
+                                <span className="text-xs text-muted-foreground shrink-0">
+                                  {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
+                                </span>
+                              </div>
+                              <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap break-words">
+                                {comment.body}
+                              </p>
+                            </div>
+                            {comment.userId === CURRENT_USER_ID && (
+                              <button
+                                onClick={() => deleteComment.mutate({ id, commentId: comment.id })}
+                                className="mt-1 ml-2 text-xs text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"
+                              >
+                                Delete
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-10 bg-muted/20 rounded-2xl border border-dashed">
+                      <MessageSquare className="w-8 h-8 text-muted-foreground/40 mx-auto mb-3" />
+                      <p className="text-muted-foreground font-medium text-sm">No messages yet</p>
+                      <p className="text-muted-foreground/60 text-xs mt-1">
+                        Be the first to start the conversation
+                      </p>
+                    </div>
+                  )}
                 </section>
               </div>
 
@@ -264,15 +418,19 @@ export default function EventDetail() {
                       {event.attendeeCount}
                     </Badge>
                   </div>
-                  
+
                   {loadingAttendees ? (
                     <div className="flex justify-center p-4">
                       <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
                     </div>
                   ) : attendees && attendees.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
-                      {attendees.map(user => (
-                        <Avatar key={user.id} className="w-10 h-10 border-2 border-background shadow-sm cursor-pointer hover:-translate-y-1 transition-transform" title={user.name}>
+                      {attendees.map((user) => (
+                        <Avatar
+                          key={user.id}
+                          className="w-10 h-10 border-2 border-background shadow-sm cursor-pointer hover:-translate-y-1 transition-transform"
+                          title={user.name}
+                        >
                           <AvatarImage src={user.avatarUrl || ""} />
                           <AvatarFallback className="bg-muted text-muted-foreground text-xs">
                             {user.name?.charAt(0) || "U"}

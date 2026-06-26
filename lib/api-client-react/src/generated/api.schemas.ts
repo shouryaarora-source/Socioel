@@ -101,6 +101,23 @@ export interface Category {
   eventCount: number;
 }
 
+export interface Comment {
+  id: number;
+  eventId: number;
+  userId: number;
+  /** @nullable */
+  userName?: string | null;
+  /** @nullable */
+  userAvatar?: string | null;
+  body: string;
+  createdAt: string;
+}
+
+export interface CommentInput {
+  userId: number;
+  body: string;
+}
+
 export type ListEventsParams = {
 category?: string;
 search?: string;

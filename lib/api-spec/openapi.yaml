@@ -308,6 +308,70 @@ paths:
                 items:
                   $ref: "#/components/schemas/Event"
 
+  /events/{id}/comments:
+    get:
+      operationId: getEventComments
+      tags: [events]
+      summary: Get comments for an event
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of comments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Comment"
+    post:
+      operationId: createComment
+      tags: [events]
+      summary: Post a comment on an event
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommentInput"
+      responses:
+        "201":
+          description: Created comment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Comment"
+
+  /events/{id}/comments/{commentId}:
+    delete:
+      operationId: deleteComment
+      tags: [events]
+      summary: Delete a comment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: commentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
   /categories:
     get:
       operationId: listCategories
@@ -488,3 +552,31 @@ components:
           type: ["string", "null"]
         eventCount:
           type: integer
+
+    Comment:
+      type: object
+      required: [id, eventId, userId, body, createdAt]
+      properties:
+        id:
+          type: integer
+        eventId:
+          type: integer
+        userId:
+          type: integer
+        userName:
+          type: ["string", "null"]
+        userAvatar:
+          type: ["string", "null"]
+        body:
+          type: string
+        createdAt:
+          type: string
+
+    CommentInput:
+      type: object
+      required: [userId, body]
+      properties:
+        userId:
+          type: integer
+        body:
+          type: string
