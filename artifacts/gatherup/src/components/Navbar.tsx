@@ -16,10 +16,10 @@ export function Navbar() {
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-display font-bold text-xl">
-            G
+            S
           </div>
           <span className="font-display font-bold text-xl tracking-tight text-foreground">
-            GatherUp
+            Socioel
           </span>
         </Link>
 
