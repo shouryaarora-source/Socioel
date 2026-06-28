@@ -5,7 +5,7 @@ services:
     env: static
     # Render runs this from the repo root
     buildCommand: pnpm install --no-frozen-lockfile && pnpm -r --filter @workspace/gatherup run build
-    staticPublishPath: artifacts/gatherup/dist
+    staticPublishPath: artifacts/gatherup/dist/public
 
   # ── Backend – Node Web Service ───────────────────────────────────────────────
   - type: web
