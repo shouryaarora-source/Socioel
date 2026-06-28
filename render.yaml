@@ -1,0 +1,24 @@
+services:
+  # Frontend – static site built by Vite
+  - type: static
+    name: gatherup-frontend
+    env: static
+    buildCommand: |
+      cd artifacts/gatherup
+      pnpm install
+      pnpm run build
+    staticPublishPath: artifacts/gatherup/dist
+
+  # Backend – Node API server
+  - type: web
+    name: api-server-backend
+    env: node
+    startCommand: |
+      cd artifacts/api-server
+      pnpm install
+      pnpm run build
+      pnpm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+    healthCheckPath: /health

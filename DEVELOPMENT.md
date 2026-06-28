@@ -67,3 +67,9 @@ pnpm --filter @workspace/api-server dev
 ```bash
 pnpm --filter @workspace/gatherup dev
 ```
+
+<!-- to run both  backend and frontend -->
+pnpm -r --parallel \
+  --filter @workspace/gatherup \
+  --filter @workspace/api-server \
+  dev

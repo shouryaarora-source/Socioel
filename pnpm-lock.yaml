@@ -157,6 +157,9 @@ importers:
 
   .:
     dependencies:
+      '@tailwindcss/oxide':
+        specifier: ^4.3.1
+        version: 4.3.1
       '@tanstack/react-query':
         specifier: 'catalog:'
         version: 5.101.1(react@19.1.0)
@@ -181,7 +184,7 @@ importers:
         version: 1.32.0
       prettier:
         specifier: ^3.8.4
-        version: 3.8.5
+        version: 3.9.0
       typescript:
         specifier: ~5.9.3
         version: 5.9.3
@@ -672,7 +675,7 @@ importers:
     devDependencies:
       orval:
         specifier: ^8.18.0
-        version: 8.19.0(prettier@3.8.5)(typescript@5.9.3)
+        version: 8.19.0(prettier@3.9.0)(typescript@5.9.3)
 
   lib/api-zod:
     dependencies:
@@ -3125,8 +3128,8 @@ packages:
   preact@10.29.3:
     resolution: {integrity: sha512-D9NL1GAnJZhc3RndVs4gDdxEeU9TcHgywMrhhOsnpdlvFjdbx0gAsLUnH6JEhlJH5giL7Tx5biWPUSEXE/HPzw==}
 
-  prettier@3.8.5:
-    resolution: {integrity: sha512-zxcTTCedNGJM4R8sj/Cq/F0W/c4iE0afWBcBwMTRtw4WHYP9TWkYjdiH3npPRUYsXQCPR0hTU9yjovOu+E6EQA==}
+  prettier@3.9.0:
+    resolution: {integrity: sha512-LjIqSIC5VYLzs9WedVmJ2ljNAGnU+DteIClbahu4L/DBeWjZ6iT/k1lAYyu9JUh+1xINxWadaPw/Pl63y/agAw==}
     engines: {node: '>=14'}
     hasBin: true
 
@@ -6026,7 +6029,7 @@ snapshots:
     dependencies:
       wrappy: 1.0.2
 
-  orval@8.19.0(prettier@3.8.5)(typescript@5.9.3):
+  orval@8.19.0(prettier@3.9.0)(typescript@5.9.3):
     dependencies:
       '@commander-js/extra-typings': 15.0.0(commander@15.0.0)
       '@orval/angular': 8.19.0(typescript@5.9.3)
@@ -6058,7 +6061,7 @@ snapshots:
       typedoc-plugin-coverage: 4.0.3(typedoc@0.28.19(typescript@5.9.3))
       typedoc-plugin-markdown: 4.12.0(typedoc@0.28.19(typescript@5.9.3))
     optionalDependencies:
-      prettier: 3.8.5
+      prettier: 3.9.0
     transitivePeerDependencies:
       - '@faker-js/faker'
       - supports-color
@@ -6214,7 +6217,7 @@ snapshots:
 
   preact@10.29.3: {}
 
-  prettier@3.8.5: {}
+  prettier@3.9.0: {}
 
   pretty-bytes@6.1.1: {}
 
