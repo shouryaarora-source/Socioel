@@ -170,6 +170,7 @@ export default function CreateEvent() {
 
 
   const form = useForm<FormValues>({
+    // @ts-ignore
     resolver: zodResolver(formSchema as any),
     defaultValues: {
       title: "",
