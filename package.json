@@ -10,6 +10,7 @@
   },
   "private": true,
   "devDependencies": {
+    "@types/node": "catalog:",
     "lightningcss-darwin-arm64": "1.32.0",
     "prettier": "^3.8.4",
     "typescript": "~5.9.3"
@@ -19,5 +20,12 @@
       "react": "19.1.0",
       "react-dom": "19.1.0"
     }
+  },
+  "dependencies": {
+    "@tanstack/react-query": "catalog:",
+    "drizzle-orm": "catalog:",
+    "drizzle-zod": "^0.8.3",
+    "pg": "^8.22.0",
+    "zod": "catalog:"
   }
 }

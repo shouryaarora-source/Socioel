@@ -19,10 +19,10 @@ catalogs:
       specifier: ^4.1.14
       version: 4.3.1
     '@tanstack/react-query':
-      specifier: ^5.90.21
+      specifier: ^5.101.0
       version: 5.101.0
     '@types/node':
-      specifier: ^25.3.3
+      specifier: ^25.9.4
       version: 25.9.4
     '@types/react':
       specifier: ^19.2.0
@@ -156,7 +156,26 @@ overrides:
 importers:
 
   .:
+    dependencies:
+      '@tanstack/react-query':
+        specifier: 'catalog:'
+        version: 5.101.0(react@19.1.0)
+      drizzle-orm:
+        specifier: 'catalog:'
+        version: 0.45.2(@types/pg@8.20.0)(pg@8.22.0)
+      drizzle-zod:
+        specifier: ^0.8.3
+        version: 0.8.3(drizzle-orm@0.45.2(@types/pg@8.20.0)(pg@8.22.0))(zod@3.25.76)
+      pg:
+        specifier: ^8.22.0
+        version: 8.22.0
+      zod:
+        specifier: 'catalog:'
+        version: 3.25.76
     devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.9.4
       lightningcss-darwin-arm64:
         specifier: 1.32.0
         version: 1.32.0
@@ -4943,7 +4962,7 @@ snapshots:
   '@types/body-parser@1.19.6':
     dependencies:
       '@types/connect': 3.4.38
-      '@types/node': 25.9.4
+      '@types/node': 20.19.43
 
   '@types/caseless@0.12.5': {}
 
@@ -4955,7 +4974,7 @@ snapshots:
 
   '@types/connect@3.4.38':
     dependencies:
-      '@types/node': 25.9.4
+      '@types/node': 20.19.43
 
   '@types/cookie-parser@1.4.10(@types/express@5.0.6)':
     dependencies:
@@ -4963,7 +4982,7 @@ snapshots:
 
   '@types/cors@2.8.19':
     dependencies:
-      '@types/node': 25.9.4
+      '@types/node': 20.19.43
 
   '@types/d3-array@3.2.2': {}
 
@@ -4993,7 +5012,7 @@ snapshots:
 
   '@types/express-serve-static-core@5.1.1':
     dependencies:
-      '@types/node': 25.9.4
+      '@types/node': 20.19.43
       '@types/qs': 6.15.1
       '@types/range-parser': 1.2.7
       '@types/send': 1.2.1
@@ -5049,7 +5068,7 @@ snapshots:
   '@types/request@2.48.13':
     dependencies:
       '@types/caseless': 0.12.5
-      '@types/node': 25.9.4
+      '@types/node': 20.19.43
       '@types/tough-cookie': 4.0.5
       form-data: 2.5.6
 
@@ -5057,12 +5076,12 @@ snapshots:
 
   '@types/send@1.2.1':
     dependencies:
-      '@types/node': 25.9.4
+      '@types/node': 20.19.43
 
   '@types/serve-static@2.2.0':
     dependencies:
       '@types/http-errors': 2.0.5
-      '@types/node': 25.9.4
+      '@types/node': 20.19.43
 
   '@types/tough-cookie@4.0.5': {}
 
@@ -5070,7 +5089,7 @@ snapshots:
 
   '@types/web-push@3.6.4':
     dependencies:
-      '@types/node': 25.9.4
+      '@types/node': 20.19.43
 
   '@uppy/aws-s3@5.1.0(@uppy/core@5.2.0)':
     dependencies:
@@ -5460,6 +5479,11 @@ snapshots:
     dependencies:
       drizzle-orm: 0.30.10(@types/pg@8.20.0)(@types/react@19.2.17)(pg@8.22.0)(react@19.1.0)
       zod: 4.4.3
+
+  drizzle-zod@0.8.3(drizzle-orm@0.45.2(@types/pg@8.20.0)(pg@8.22.0))(zod@3.25.76):
+    dependencies:
+      drizzle-orm: 0.45.2(@types/pg@8.20.0)(pg@8.22.0)
+      zod: 3.25.76
 
   dunder-proto@1.0.1:
     dependencies:
