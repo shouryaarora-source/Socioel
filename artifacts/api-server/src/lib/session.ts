@@ -34,6 +34,17 @@ if (!sessionSecret && process.env["NODE_ENV"] === "production") {
   throw new Error("SESSION_SECRET is required in production.");
 }
 
+const isReplitProxy = Boolean(process.env["REPLIT_DEV_DOMAIN"] || process.env["REPLIT_DOMAINS"]);
+const cookieSecure = isReplitProxy || process.env["NODE_ENV"] === "production";
+const cookieSameSite = cookieSecure ? "none" : "lax";
+
+export const sessionCookieOptions = {
+  secure: cookieSecure,
+  httpOnly: true,
+  maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+  sameSite: cookieSameSite as "none" | "lax",
+};
+
 const sessionMiddleware = session({
   store: new PgSession({
     pool,
@@ -43,16 +54,7 @@ const sessionMiddleware = session({
   secret: sessionSecret || "dev-secret-change-in-production",
   resave: false,
   saveUninitialized: false,
-  cookie: {
-    // Served over HTTPS through the Replit proxy in both dev preview and
-    // production. `secure` + `sameSite: "none"` is required for the cookie to
-    // be sent inside the embedded preview/webview, which loads the app in a
-    // cross-site iframe. Requires `app.set("trust proxy", 1)` (see app.ts).
-    secure: true,
-    httpOnly: true,
-    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-    sameSite: "none",
-  },
+  cookie: sessionCookieOptions,
 });
 
 export default sessionMiddleware;

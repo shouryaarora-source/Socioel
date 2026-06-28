@@ -33,6 +33,23 @@ function getAllowedOrigins(): Set<string> {
       if (trimmed) origins.add(`https://${trimmed}`);
     }
   }
+
+  if (process.env.NODE_ENV !== "production") {
+    const localOrigins = [
+      "http://localhost:3000",
+      "http://127.0.0.1:3000",
+      "http://localhost:4173",
+      "http://127.0.0.1:4173",
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+      "http://localhost:5000",
+      "http://127.0.0.1:5000",
+    ];
+    for (const origin of localOrigins) {
+      origins.add(origin);
+    }
+  }
+
   return origins;
 }
 
@@ -67,6 +84,14 @@ app.use(
     origin(origin, callback) {
       if (!origin || allowedOrigins.has(origin)) {
         callback(null, true);
+      } else if (
+        process.env.NODE_ENV !== "production" &&
+        (origin.startsWith("http://localhost:") ||
+          origin.startsWith("http://127.0.0.1:") ||
+          origin.startsWith("http://192.168.") ||
+          origin.startsWith("http://10."))
+      ) {
+        callback(null, true);
       } else {
         callback(null, false);
       }
@@ -88,6 +113,17 @@ app.use((req, res, next) => {
   }
   const origin = req.get("origin");
   if (origin && !allowedOrigins.has(origin)) {
+    // In development, allow local network IP addresses as well.
+    if (
+      process.env.NODE_ENV !== "production" &&
+      (origin.startsWith("http://localhost:") ||
+        origin.startsWith("http://127.0.0.1:") ||
+        origin.startsWith("http://192.168.") ||
+        origin.startsWith("http://10."))
+    ) {
+      next();
+      return;
+    }
     res.status(403).json({ error: "Cross-origin request blocked" });
     return;
   }

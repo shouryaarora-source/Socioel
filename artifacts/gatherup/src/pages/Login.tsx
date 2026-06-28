@@ -40,12 +40,25 @@ export default function Login() {
   // ─── Navigation / gestures ───────────────────────────────────────────────────
 
   function goBack() {
+    // If user came from CreateEvent (and we redirected to login), always send them back home.
+    if (sessionStorage.getItem("pendingCreateEvent") === "1") {
+      try {
+        sessionStorage.removeItem("pendingCreateEvent");
+      } catch {
+        // ignore
+      }
+      setLocation("/");
+      return;
+    }
+
     if (window.history.length > 1) {
       window.history.back();
-    } else {
-      setLocation("/");
+      return;
     }
+
+    setLocation(sessionStorage.getItem("postLoginRedirect") || "/");
   }
+
 
   const touchStart = useRef<{ x: number; y: number } | null>(null);
 
@@ -87,7 +100,12 @@ export default function Login() {
       }
       login(data.user);
       toast({ title: `Welcome back, ${data.user.name}!` });
-      setLocation(`/profile/${data.user.id}`);
+
+      const redirectTo = sessionStorage.getItem("postLoginRedirect");
+      if (redirectTo) sessionStorage.removeItem("postLoginRedirect");
+
+      setLocation(redirectTo || `/profile/${data.user.id}`);
+
     } catch {
       toast({ title: "Error", description: "Network error. Please try again.", variant: "destructive" });
     } finally {
@@ -100,6 +118,18 @@ export default function Login() {
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim() || !phone.trim() || !password) return;
+
+    // Helps debug “Network error” by surfacing server errors in UI.
+    // (Backend returns JSON { error: ... } on failures.)
+    const getServerError = async (res: Response) => {
+      try {
+        const data = await res.json();
+        return data?.error || JSON.stringify(data);
+      } catch {
+        return await res.text();
+      }
+    };
+
     if (password.length < 6) {
       toast({ title: "Password too short", description: "Use at least 6 characters.", variant: "destructive" });
       return;
@@ -112,6 +142,7 @@ export default function Login() {
     try {
       const body: Record<string, unknown> = {
         name: name.trim(),
+
         phone: phone.trim(),
         password,
       };
@@ -126,11 +157,15 @@ export default function Login() {
         credentials: "include",
         body: JSON.stringify(body),
       });
-      const data = await res.json();
+
       if (!res.ok) {
-        toast({ title: "Registration failed", description: data.error || "Please try again.", variant: "destructive" });
+        const serverError = await getServerError(res);
+        toast({ title: "Registration failed", description: serverError || "Please try again.", variant: "destructive" });
         return;
       }
+
+      const data = await res.json();
+
       login(data.user);
       toast({ title: `Welcome to Socioel, ${data.user.name}!`, description: "Your account is ready." });
       setLocation(`/profile/${data.user.id}`);

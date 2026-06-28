@@ -11,8 +11,10 @@ import Profile from "@/pages/Profile";
 import Categories from "@/pages/Categories";
 import Login from "@/pages/Login";
 import VideoTemplate from "@/components/video/VideoTemplate";
+import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 
 const queryClient = new QueryClient();
+
 
 function Router() {
   return (
@@ -33,15 +35,18 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <TooltipProvider>
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <Router />
-          </WouterRouter>
-          <Toaster />
-        </TooltipProvider>
+        <AppErrorBoundary>
+          <TooltipProvider>
+            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+              <Router />
+            </WouterRouter>
+            <Toaster />
+          </TooltipProvider>
+        </AppErrorBoundary>
       </AuthProvider>
     </QueryClientProvider>
   );
 }
+
 
 export default App;

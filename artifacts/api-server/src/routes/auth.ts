@@ -4,6 +4,7 @@ import { scrypt, randomBytes, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import { db, usersTable } from "@workspace/db";
 import { LoginBody, RegisterBody } from "@workspace/api-zod";
+import { sessionCookieOptions } from "../lib/session";
 
 const router: IRouter = Router();
 
@@ -177,9 +178,9 @@ router.post("/auth/logout", async (req, res): Promise<void> => {
     }
     res.clearCookie("connect.sid", {
       path: "/",
-      httpOnly: true,
-      secure: true,
-      sameSite: "none",
+      httpOnly: sessionCookieOptions.httpOnly,
+      secure: sessionCookieOptions.secure,
+      sameSite: sessionCookieOptions.sameSite,
     });
     res.json({ success: true });
   });

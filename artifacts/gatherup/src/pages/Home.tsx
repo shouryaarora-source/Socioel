@@ -197,9 +197,12 @@ export default function Home() {
                   ? "No events found within 50 km of your location. Try creating one!"
                   : "We couldn't find any events matching your criteria. Why not start your own?"}
               </p>
-              <Button onClick={() => (window.location.href = "/events/new")}>
-                Create an Event
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-3 sm:items-center justify-center">
+                <Button onClick={() => (window.location.href = "/events/new?category=Running")}>
+                  Create a Running Event
+                </Button>
+                <Button variant="outline" onClick={() => (window.location.href = "/events/new")}>Create an Event</Button>
+              </div>
             </div>
           )}
 

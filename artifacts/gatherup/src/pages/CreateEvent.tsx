@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+
 import { useLocation } from "wouter";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -28,7 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
-import { Calendar, Clock, MapPin, Users, Type, Image as ImageIcon, Loader2, Lock, Globe } from "lucide-react";
+import { Calendar, Clock, MapPin, Users, Type, Image as ImageIcon, Loader2, Lock, Globe, X } from "lucide-react";
 
 const formSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters").max(100),
@@ -142,17 +143,31 @@ function LocationAutocomplete({
 
 export default function CreateEvent() {
   const [, setLocation] = useLocation();
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user: currentUser, isLoading: authLoading } = useAuth();
 
-  // Redirect to login if not authenticated
+  // Redirect to login if not authenticated.
+  // Preserve the attempted route so user can go back after signing in.
   useEffect(() => {
     if (!authLoading && !currentUser) {
+      try {
+        sessionStorage.setItem(
+          "postLoginRedirect",
+          window.location.pathname + window.location.search,
+        );
+      } catch {
+        // ignore
+      }
+      // Let the user decide to close instead of forcing an immediate redirect.
+      // The close button on this page will navigate back to home.
       toast({ title: "Sign in required", description: "Please sign in to create an event.", variant: "destructive" });
+      sessionStorage.setItem("pendingCreateEvent", "1");
       setLocation("/login");
     }
   }, [authLoading, currentUser, setLocation, toast]);
+
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -215,6 +230,24 @@ export default function CreateEvent() {
   return (
     <div className="min-h-screen pb-20 md:pb-0 bg-background/50">
       <Navbar />
+
+      {/* Close / go back */}
+      <button
+        type="button"
+        onClick={() => {
+          // Go back in history if possible; this works even when CreateEvent auto-redirected to /login.
+          if (window.history.length > 1) {
+            window.history.back();
+          } else {
+            setLocation("/");
+          }
+        }}
+        aria-label="Close"
+        className="absolute top-4 right-4 z-50 w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground bg-muted/60 hover:bg-muted hover:text-foreground transition-colors"
+      >
+        <X className="w-5 h-5" />
+      </button>
+
       <main className="container mx-auto px-4 py-12 max-w-2xl">
         <div className="text-center mb-10">
           <h1 className="text-4xl font-display font-extrabold text-foreground tracking-tight mb-3">Host an Event</h1>

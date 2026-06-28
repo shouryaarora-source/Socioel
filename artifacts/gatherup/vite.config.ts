@@ -1,37 +1,47 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
+// Force a known-good PostCSS pipeline shape.
+// Note: we intentionally avoid importing autoprefixer directly here because
+// it may not be present as a direct dependency; PostCSS/Vite can resolve it.
+
+
+
+
+
+
+
+
+
 const rawPort = process.env.PORT;
+const port = rawPort ? Number(rawPort) : 5173;
 
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
-}
+const basePath = process.env.BASE_PATH ?? "/";
 
-const port = Number(rawPort);
+const apiProxyTarget =
+  process.env["VITE_API_URL"] ||
+  process.env["API_URL"] ||
+  "http://127.0.0.1:3000";
 
-if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
-}
-
-const basePath = process.env.BASE_PATH;
-
-if (!basePath) {
-  throw new Error(
-    "BASE_PATH environment variable is required but was not provided.",
-  );
-}
 
 export default defineConfig({
+  envDir: '../../',
   base: basePath,
+  // Let Vite/PostCSS load configuration from postcss.config.js/cjs directly.
+  // This avoids mismatched PostCSS plugin shapes causing `postcssConfig?.plugins.slice` crashes.
+  // css: {
+  //   postcss: postcssConfig,
+  // },
   plugins: [
-    react(),
     tailwindcss(),
+    react(),
+
     runtimeErrorOverlay(),
+
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
       ? [
@@ -59,16 +69,23 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
-    port,
-    strictPort: true,
+    port: Number.isNaN(port) || port <= 0 ? 5173 : port,
+    strictPort: false,
     host: "0.0.0.0",
     allowedHosts: true,
     fs: {
       strict: true,
     },
+    proxy: {
+      "/api": {
+        target: apiProxyTarget,
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
   preview: {
-    port,
+    port: Number.isNaN(port) || port <= 0 ? 5173 : port,
     host: "0.0.0.0",
     allowedHosts: true,
   },
