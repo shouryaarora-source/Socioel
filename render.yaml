@@ -1,23 +1,19 @@
 services:
-  # Frontend – static site built by Vite
+  # ── Frontend – Static Site (served from Vite build output) ──────────────────
   - type: static
     name: gatherup-frontend
     env: static
-    buildCommand: |
-      cd artifacts/gatherup
-      pnpm install
-      pnpm run build
+    # Render runs this from the repo root
+    buildCommand: pnpm install --no-frozen-lockfile && pnpm -r --filter @workspace/gatherup run build
     staticPublishPath: artifacts/gatherup/dist
 
-  # Backend – Node API server
+  # ── Backend – Node Web Service ───────────────────────────────────────────────
   - type: web
     name: api-server-backend
     env: node
-    startCommand: |
-      cd artifacts/api-server
-      pnpm install
-      pnpm run build
-      pnpm start
+    # Build the backend, then start it (no --env-file; Render injects env vars)
+    buildCommand: pnpm install --no-frozen-lockfile && pnpm -r --filter @workspace/api-server run build
+    startCommand: cd artifacts/api-server && node --enable-source-maps ./dist/index.mjs
     envVars:
       - key: NODE_ENV
         value: production
