@@ -44,6 +44,7 @@ function getAllowedOrigins(): Set<string> {
       "http://127.0.0.1:5173",
       "http://localhost:5000",
       "http://127.0.0.1:5000",
+      "https://socioel-1.onrender.com",
     ];
     for (const origin of localOrigins) {
       origins.add(origin);
@@ -119,6 +120,7 @@ app.use((req, res, next) => {
       (origin.startsWith("http://localhost:") ||
         origin.startsWith("http://127.0.0.1:") ||
         origin.startsWith("http://192.168.") ||
+        origin.startsWith("https://socioel-1.onrender.com") ||
         origin.startsWith("http://10."))
     ) {
       next();
@@ -133,7 +135,9 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(sessionMiddleware);
-
+app.get("/health", (req, res) => {
+  res.json({ status: "ok" });
+});
 app.use("/api", router);
 
 export default app;

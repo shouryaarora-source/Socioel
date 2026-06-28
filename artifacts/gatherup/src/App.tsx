@@ -12,7 +12,6 @@ import Categories from "@/pages/Categories";
 import Login from "@/pages/Login";
 import VideoTemplate from "@/components/video/VideoTemplate";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
-
 const queryClient = new QueryClient();
 
 
