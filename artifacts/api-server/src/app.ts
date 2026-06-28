@@ -122,6 +122,7 @@ app.use((req, res, next) => {
         origin.startsWith("http://127.0.0.1:") ||
         origin.startsWith("http://192.168.") ||
         origin.startsWith("https://socioel.onrender.com") ||
+        origin.startsWith("https://www.socioel.com") ||
         origin.startsWith("http://10."))
     ) {
       next();
